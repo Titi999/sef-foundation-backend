@@ -11,6 +11,7 @@ import { IResponse } from '../shared/response.interface';
 import { IUser, IUserToken } from './authentication.interface';
 import {
   ForgotPasswordDto,
+  ResendCodeDto,
   ResetPasswordDto,
   VerifyLoginDto,
 } from './authentication.dto';
@@ -48,5 +49,13 @@ export class AuthenticationController {
     @Body() resetPasswordDto: ResetPasswordDto,
   ): Promise<IResponse<User>> {
     return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post('resend-code')
+  async resendCode(
+    @Body() resendCodeDto: ResendCodeDto,
+  ): Promise<IResponse<IUser>> {
+    return this.authService.resendCode(resendCodeDto);
   }
 }
