@@ -9,7 +9,11 @@ import { AuthenticationService } from './authentication.service';
 import { LoginDto } from '../users/dto/create-user.dto';
 import { IResponse } from '../shared/response.interface';
 import { IUser, IUserToken } from './authentication.interface';
-import { ForgotPasswordDto, VerifyLoginDto } from './authentication.dto';
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyLoginDto,
+} from './authentication.dto';
 import { User } from '../users/entities/user.entity';
 
 @Controller('authentication')
@@ -36,5 +40,13 @@ export class AuthenticationController {
     @Body() forgotPasswordDto: ForgotPasswordDto,
   ): Promise<IResponse<User>> {
     return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post('reset-password')
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<IResponse<User>> {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }

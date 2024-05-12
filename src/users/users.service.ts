@@ -56,4 +56,8 @@ export class UsersService {
       .where('user.email = :email', { email })
       .getOne();
   }
+
+  async saveUser(user: User): Promise<User> {
+    return this.userRepository.save(user);
+  }
 }

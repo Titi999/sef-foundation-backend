@@ -10,7 +10,6 @@ import * as process from 'process';
 import { join } from 'path';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import { NotificationService } from './shared/notification/notification.service';
 
 @Module({
   imports: [
