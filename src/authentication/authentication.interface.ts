@@ -10,6 +10,6 @@ export interface IUser {
   user: User;
 }
 
-export const verificationTypes = ['email', 'login'] as const;
+export const verificationTypes = ['forgot-password', 'login'] as const;
 
 export type verificationType = (typeof verificationTypes)[number];
