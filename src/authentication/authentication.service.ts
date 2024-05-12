@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   GoneException,
   Injectable,
   Logger,
@@ -23,10 +24,15 @@ import {
   generateOTPCode,
   generateRandomToken,
 } from '../utility/tokenGenerator';
-import { ForgotPasswordDto, VerifyLoginDto } from './authentication.dto';
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyLoginDto,
+} from './authentication.dto';
 import { NotificationService } from '../shared/notification/notification.service';
 import * as process from 'process';
 import { User } from '../users/entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthenticationService {
@@ -137,6 +143,45 @@ export class AuthenticationService {
     );
     return {
       message: `We have sent a reset email to ${user.email}`,
+      data: user,
+    };
+  }
+
+  async resetPassword({
+    token,
+    confirmPassword,
+    password,
+  }: ResetPasswordDto): Promise<IResponse<User>> {
+    const authentication = await this.authenticationRepository.findOneByOrFail({
+      token,
+    });
+    const createdAt = new Date(authentication.created_at).getMinutes();
+    const now = new Date().getMinutes();
+
+    const differenceInMinutes = now - createdAt;
+
+    if (differenceInMinutes > 10) {
+      throw new GoneException({
+        message: 'The request for reset has expired. Please try again',
+        status: 410,
+      });
+    }
+
+    if (password !== confirmPassword) {
+      throw new BadRequestException({
+        message: 'Confirm password and password do not match',
+        status: 400,
+      });
+    }
+
+    const user = await this.usersService.findOne(authentication.user.id);
+
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(password, salt);
+    await this.usersService.saveUser(user);
+    await this.authenticationRepository.delete(authentication);
+    return {
+      message: `You have successfully reset your password`,
       data: user,
     };
   }
