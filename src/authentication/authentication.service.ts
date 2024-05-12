@@ -25,7 +25,7 @@ import {
 } from '../utility/tokenGenerator';
 import { ForgotPasswordDto, VerifyLoginDto } from './authentication.dto';
 import { NotificationService } from '../shared/notification/notification.service';
-import process from 'process';
+import * as process from 'process';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
