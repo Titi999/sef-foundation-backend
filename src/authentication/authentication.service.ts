@@ -41,7 +41,7 @@ export class AuthenticationService {
       await this.usersService.findUserIncludingPasswordByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const passwordIsValid = await this.usersService.validatePassword(
@@ -50,20 +50,18 @@ export class AuthenticationService {
     );
 
     if (!passwordIsValid) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const authentication = new Authentication();
     authentication.user = user;
     authentication.token = generateOTPCode();
     authentication.type = verificationTypes[1];
-    await this.notificationService.sendEmail(
-      `You have request a login. Use this OTP to login: ${authentication.token}`,
+    await this.notificationService.sendLoginVerificationEmail(
       user.email,
       'Login Request',
       user.name,
-      '',
-      '',
+      authentication.token,
     );
     await this.authenticationRepository.save(authentication);
     delete user.password;

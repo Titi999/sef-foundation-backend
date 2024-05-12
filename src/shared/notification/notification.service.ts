@@ -5,25 +5,20 @@ import { MailerService } from '@nestjs-modules/mailer';
 export class NotificationService {
   constructor(private mailerService: MailerService) {}
 
-  async sendEmail(
-    body: string,
+  async sendLoginVerificationEmail(
     to: string,
     subject: string,
     name: string,
-    url: string,
-    action: string,
+    code: string,
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
       from: 'info@sef.com',
       subject,
-      template: './email',
+      template: './loginVerification',
       context: {
         name,
-        url,
-        subject,
-        body,
-        action,
+        code,
       },
     });
   }
