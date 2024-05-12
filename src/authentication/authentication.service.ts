@@ -2,6 +2,7 @@ import {
   GoneException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
@@ -18,9 +19,14 @@ import {
 import { Authentication } from './entities/authentication.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { generateOTPCode } from '../utility/tokenGenerator';
-import { VerifyLoginDto } from './authentication.dto';
+import {
+  generateOTPCode,
+  generateRandomToken,
+} from '../utility/tokenGenerator';
+import { ForgotPasswordDto, VerifyLoginDto } from './authentication.dto';
 import { NotificationService } from '../shared/notification/notification.service';
+import * as process from 'process';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthenticationService {
@@ -59,7 +65,6 @@ export class AuthenticationService {
     authentication.type = verificationTypes[1];
     await this.notificationService.sendLoginVerificationEmail(
       user.email,
-      'Login Request',
       user.name,
       authentication.token,
     );
@@ -109,6 +114,30 @@ export class AuthenticationService {
         refreshToken: refreshToken,
         user: user,
       },
+    };
+  }
+
+  async forgotPassword({ email }: ForgotPasswordDto): Promise<IResponse<User>> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} does not exist`);
+    }
+
+    const authentication = new Authentication();
+    const token = generateRandomToken();
+    authentication.token = token;
+    authentication.user = user;
+    authentication.type = verificationTypes[0];
+    await this.authenticationRepository.save(authentication);
+    const resetLink = `reset-password/${token}`;
+    await this.notificationService.sendForgotPasswordEmail(
+      user.email,
+      user.name,
+      `${process.env.FRONTEND_URL}/${resetLink}`,
+    );
+    return {
+      message: `We have sent a reset email to ${user.email}`,
+      data: user,
     };
   }
 }

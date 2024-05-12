@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsNumberString, IsUUID, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsNumberString,
+  IsUUID,
+  Length,
+} from 'class-validator';
 
 export class VerifyLoginDto {
   @IsNotEmpty()
@@ -9,4 +15,10 @@ export class VerifyLoginDto {
   @IsNumberString()
   @Length(6, 6)
   token: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }

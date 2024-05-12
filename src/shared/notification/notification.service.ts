@@ -7,18 +7,34 @@ export class NotificationService {
 
   async sendLoginVerificationEmail(
     to: string,
-    subject: string,
     name: string,
     code: string,
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
       from: 'info@sef.com',
-      subject,
+      subject: 'Login Request',
       template: './loginVerification',
       context: {
         name,
         code,
+      },
+    });
+  }
+
+  async sendForgotPasswordEmail(
+    to: string,
+    name: string,
+    url: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sef.com',
+      subject: 'Forgot Password',
+      template: './forgotPassword',
+      context: {
+        name,
+        url,
       },
     });
   }
