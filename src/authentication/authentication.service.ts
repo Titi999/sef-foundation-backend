@@ -117,12 +117,10 @@ export class AuthenticationService {
     };
   }
 
-  async forgotPassword(
-    forgotPasswordDto: ForgotPasswordDto,
-  ): Promise<IResponse<User>> {
-    const user = await this.usersService.findByEmail(forgotPasswordDto.email);
+  async forgotPassword({ email }: ForgotPasswordDto): Promise<IResponse<User>> {
+    const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new NotFoundException('User with email does not exist');
+      throw new NotFoundException(`User with email ${email} does not exist`);
     }
 
     const authentication = new Authentication();
