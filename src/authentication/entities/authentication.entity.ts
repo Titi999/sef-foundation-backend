@@ -13,7 +13,6 @@ import { verificationTypes } from '../authentication.interface';
 @Entity({ name: 'authentications' })
 export class Authentication {
   constructor() {
-    // Generate a UUID for the new user instance
     this.id = uuidv4();
   }
 

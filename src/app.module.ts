@@ -28,7 +28,7 @@ import { NotificationService } from './shared/notification/notification.service'
         },
       },
       defaults: {
-        from: '"No Reply" <info@maltitiaenterprise.com',
+        from: '"No Reply" <info@sef.com',
       },
       template: {
         dir: join(__dirname, '/templates'),
@@ -40,6 +40,6 @@ import { NotificationService } from './shared/notification/notification.service'
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, NotificationService],
+  providers: [AppService],
 })
 export class AppModule {}
