@@ -226,7 +226,7 @@ export class AuthenticationService {
     await this.authenticationRepository.save(newAuthentication);
 
     return {
-      message: 'An new OTP has been sent to your email for verification',
+      message: 'A new code has been sent to your email for verification',
       data: {
         user,
       },
