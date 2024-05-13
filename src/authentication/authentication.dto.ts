@@ -44,3 +44,9 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   confirmPassword: string;
 }
+
+export class ResendCodeDto {
+  @IsNotEmpty()
+  @IsUUID()
+  id: string;
+}

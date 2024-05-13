@@ -26,6 +26,7 @@ import {
 } from '../utility/tokenGenerator';
 import {
   ForgotPasswordDto,
+  ResendCodeDto,
   ResetPasswordDto,
   VerifyLoginDto,
 } from './authentication.dto';
@@ -183,6 +184,52 @@ export class AuthenticationService {
     return {
       message: `You have successfully reset your password`,
       data: user,
+    };
+  }
+
+  async resendCode({ id }: ResendCodeDto) {
+    const user = await this.usersService.findOneOrFail(id);
+    const authentications = await this.authenticationRepository.find({
+      where: {
+        user: {
+          id: user.id,
+        },
+        type: verificationTypes[1],
+      },
+    });
+    let recentVerification = false;
+    for (const authentication of authentications) {
+      const now = new Date().getMinutes();
+      const createdAt = authentication.created_at.getMinutes();
+      const differenceInMinutes = now - createdAt;
+      if (differenceInMinutes <= 10) {
+        recentVerification = true;
+      }
+      await this.authenticationRepository.remove(authentication);
+    }
+
+    if (!recentVerification) {
+      throw new GoneException(
+        'Period to resend code has elapsed. Please login again',
+      );
+    }
+
+    const newAuthentication = new Authentication();
+    newAuthentication.user = user;
+    newAuthentication.token = generateOTPCode();
+    newAuthentication.type = verificationTypes[1];
+    await this.notificationService.sendLoginVerificationEmail(
+      user.email,
+      user.name,
+      newAuthentication.token,
+    );
+    await this.authenticationRepository.save(newAuthentication);
+
+    return {
+      message: 'A new code has been sent to your email for verification',
+      data: {
+        user,
+      },
     };
   }
 }
