@@ -210,7 +210,7 @@ export class AuthenticationService {
 
     if (!recentVerification) {
       throw new GoneException(
-        'Resend code time period elapsed. Please try to login again',
+        'Period to resend code has elapsed. Please login again',
       );
     }
 
