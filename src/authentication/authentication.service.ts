@@ -34,6 +34,7 @@ import { NotificationService } from '../shared/notification/notification.service
 import * as process from 'process';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { getTimeDifference } from '../utility/timeCalculator';
 
 @Injectable()
 export class AuthenticationService {
@@ -93,12 +94,8 @@ export class AuthenticationService {
       type: verificationTypes[1],
       token: verifyLoginDto.token,
     });
-    const createdAt = new Date(authentication.created_at).getMinutes();
-    const now = new Date().getMinutes();
 
-    const differenceInMinutes = now - createdAt;
-
-    if (differenceInMinutes > 10) {
+    if (getTimeDifference(authentication.created_at) > 10) {
       throw new GoneException({
         message: 'OTP has expired. Please try again',
         status: 410,
@@ -156,12 +153,7 @@ export class AuthenticationService {
     const authentication = await this.authenticationRepository.findOneByOrFail({
       token,
     });
-    const createdAt = new Date(authentication.created_at).getMinutes();
-    const now = new Date().getMinutes();
-
-    const differenceInMinutes = now - createdAt;
-
-    if (differenceInMinutes > 10) {
+    if (getTimeDifference(authentication.created_at) > 10) {
       throw new GoneException({
         message: 'The request for reset has expired. Please try again',
         status: 410,
@@ -199,10 +191,7 @@ export class AuthenticationService {
     });
     let recentVerification = false;
     for (const authentication of authentications) {
-      const now = new Date().getMinutes();
-      const createdAt = authentication.created_at.getMinutes();
-      const differenceInMinutes = now - createdAt;
-      if (differenceInMinutes <= 10) {
+      if (getTimeDifference(authentication.created_at) <= 10) {
         recentVerification = true;
       }
       await this.authenticationRepository.remove(authentication);
