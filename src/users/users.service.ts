@@ -4,6 +4,7 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
+import { IPagination, IResponse } from '../shared/response.interface';
 
 @Injectable()
 export class UsersService {
@@ -59,5 +60,40 @@ export class UsersService {
 
   async saveUser(user: User): Promise<User> {
     return this.userRepository.save(user);
+  }
+
+  async getUsers(
+    page: number = 1,
+    searchTerm: string = '',
+  ): Promise<IResponse<IPagination<User[]>>> {
+    const skip = (page - 1) * 10;
+    const queryBuilder = this.userRepository.createQueryBuilder('user');
+
+    if (searchTerm) {
+      console.log('hi', queryBuilder);
+      queryBuilder.where('LOWER(user.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${searchTerm}%`,
+      });
+      queryBuilder.orWhere('LOWER(user.email) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${searchTerm}%`,
+      });
+    }
+
+    console.log('hi', queryBuilder);
+
+    const [users, total] = await queryBuilder
+      .skip(skip)
+      .take(10)
+      .getManyAndCount();
+
+    return {
+      message: 'Users loaded successfully',
+      data: {
+        total,
+        currentPage: page,
+        totalPages: Math.ceil(total / 10),
+        items: users,
+      },
+    };
   }
 }
