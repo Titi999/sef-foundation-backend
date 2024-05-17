@@ -48,7 +48,7 @@ export class AuthenticationService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async signIn(loginDto: LoginDto): Promise<IResponse<IUser>> {
+  async signIn(loginDto: LoginDto): Promise<IResponse<User>> {
     const { email, password } = loginDto;
 
     const user =
@@ -80,9 +80,7 @@ export class AuthenticationService {
     delete user.password;
     return {
       message: 'An OTP has been sent to your email for verification',
-      data: {
-        user,
-      },
+      data: user,
     };
   }
 
@@ -90,10 +88,17 @@ export class AuthenticationService {
     verifyLoginDto: VerifyLoginDto,
   ): Promise<IResponse<IUserToken>> {
     const user = await this.usersService.findOneOrFail(verifyLoginDto.id);
-    const authentication = await this.authenticationRepository.findOneByOrFail({
+    const authentication = await this.authenticationRepository.findOneBy({
       type: verificationTypes[1],
       token: verifyLoginDto.token,
     });
+
+    if (!authentication) {
+      throw new NotFoundException({
+        message: 'Code is invalid or has expired',
+        status: 404,
+      });
+    }
 
     if (getTimeDifference(authentication.created_at) > 10) {
       throw new GoneException({

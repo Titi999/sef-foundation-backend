@@ -9,7 +9,7 @@ import {
 import { Exclude } from 'class-transformer';
 import { v4 as uuidv4 } from 'uuid';
 import { IsEmail } from 'class-validator';
-import { userRoles } from '../user.interface';
+import { statuses, userRoles } from '../user.interface';
 
 @Entity({ name: 'users' })
 export class User {
@@ -35,6 +35,9 @@ export class User {
 
   @Column({ enum: userRoles })
   role: string;
+
+  @Column({ enum: [statuses], default: 'active' })
+  status: string;
 
   @Column({ nullable: true })
   permissions: string;
