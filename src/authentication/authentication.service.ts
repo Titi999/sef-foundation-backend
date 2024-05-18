@@ -200,6 +200,8 @@ export class AuthenticationService {
 
     const salt = await bcrypt.genSalt();
     user.password = await bcrypt.hash(password, salt);
+    user.firstLogin = false;
+    user.email_verified_at = new Date();
     await this.usersService.saveUser(user);
     await this.authenticationRepository.delete(authentication);
     return {
