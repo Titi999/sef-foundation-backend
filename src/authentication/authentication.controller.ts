@@ -23,7 +23,9 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post('login')
-  async signIn(@Body() loginDto: LoginDto): Promise<IResponse<User>> {
+  async signIn(
+    @Body() loginDto: LoginDto,
+  ): Promise<IResponse<User | IUserToken>> {
     return this.authService.signIn(loginDto);
   }
 
