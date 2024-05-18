@@ -67,6 +67,12 @@ export class AuthenticationService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (user.status === 'inactive') {
+      throw new UnauthorizedException(
+        'Your account has been deactivated. Contact Admin',
+      );
+    }
+
     const authentication = new Authentication();
     authentication.user = user;
     authentication.token = generateOTPCode();

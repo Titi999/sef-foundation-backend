@@ -48,6 +48,9 @@ export class User {
   @Column({ nullable: true })
   email_verified_at: Date;
 
+  @Column({ default: true })
+  firstLogin: boolean;
+
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',

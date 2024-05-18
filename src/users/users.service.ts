@@ -1,16 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from './dto/create-user.dto';
+import { AddUserDto, CreateUserDto } from './dto/create-user.dto';
 import { IPagination, IResponse } from '../shared/response.interface';
+import { generateRandomToken } from '../utility/tokenGenerator';
+import { statuses } from './user.interface';
+import { NotificationService } from '../shared/notification/notification.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async findOne(id: string): Promise<User> {
@@ -70,7 +74,6 @@ export class UsersService {
     const queryBuilder = this.userRepository.createQueryBuilder('user');
 
     if (searchTerm) {
-      console.log('hi', queryBuilder);
       queryBuilder.where('LOWER(user.name) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
       });
@@ -78,8 +81,6 @@ export class UsersService {
         searchTerm: `%${searchTerm}%`,
       });
     }
-
-    console.log('hi', queryBuilder);
 
     const [users, total] = await queryBuilder
       .skip(skip)
@@ -94,6 +95,72 @@ export class UsersService {
         totalPages: Math.ceil(total / 10),
         items: users,
       },
+    };
+  }
+
+  async inviteUser(addUserDto: AddUserDto): Promise<IResponse<User>> {
+    if (await this.findByEmail(addUserDto.email))
+      throw new HttpException(
+        {
+          status: HttpStatus.CONFLICT,
+          error: 'User with email already exists',
+        },
+        HttpStatus.CONFLICT,
+      );
+
+    const user = new User();
+    user.email = addUserDto.email;
+    user.name = addUserDto.name;
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(generateRandomToken(8), salt);
+    user.role = addUserDto.role;
+    const userResponse = await this.userRepository.save(user);
+    await this.notificationService.sendInviteEmail(user.email, user.name, '');
+    return {
+      message: 'User has been successfully invited via email',
+      data: userResponse,
+    };
+  }
+
+  async editUser(
+    id: string,
+    editUserDto: AddUserDto,
+  ): Promise<IResponse<User>> {
+    const user = await this.userRepository.findOneByOrFail({
+      id,
+    });
+    user.email = editUserDto.email;
+    user.role = editUserDto.role;
+    user.name = editUserDto.name;
+    const userResponse = await this.userRepository.save(user);
+
+    return {
+      message: 'User has been edited successfully',
+      data: userResponse,
+    };
+  }
+
+  async deleteUser(id: string): Promise<IResponse<User>> {
+    const user = await this.userRepository.findOneByOrFail({
+      id,
+    });
+    await this.userRepository.remove(user);
+    return {
+      message: 'User has been deleted successfully',
+      data: user,
+    };
+  }
+
+  async changeStatus(id: string): Promise<IResponse<User>> {
+    const user = await this.userRepository.findOneByOrFail({
+      id,
+    });
+
+    user.status = user.status === 'active' ? 'inactive' : 'active';
+    const userResponse = await this.userRepository.save(user);
+    return {
+      message: 'User status has been updated successfully',
+      data: userResponse,
     };
   }
 }
