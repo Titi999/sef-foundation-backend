@@ -14,9 +14,10 @@ import { User } from './entities/user.entity';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { AddUserDto } from './dto/create-user.dto';
+import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
