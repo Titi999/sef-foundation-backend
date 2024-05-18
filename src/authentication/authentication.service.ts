@@ -44,7 +44,7 @@ export class AuthenticationService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async signIn(loginDto: LoginDto): Promise<IResponse<User>> {
+  async signIn(loginDto: LoginDto): Promise<IResponse<User | IUserToken>> {
     const { email, password } = loginDto;
 
     const user =
@@ -67,6 +67,23 @@ export class AuthenticationService {
       throw new UnauthorizedException(
         'Your account has been deactivated. Contact Admin',
       );
+    }
+
+    if (user.firstLogin) {
+      const authentication = new Authentication();
+      authentication.token = generateRandomToken();
+      authentication.user = user;
+      authentication.type = verificationTypes[0];
+      await this.authenticationRepository.save(authentication);
+
+      return {
+        message: 'This is your first login, please reset your password',
+        data: {
+          user,
+          accessToken: authentication.token,
+          refreshToken: '',
+        },
+      };
     }
 
     const authentication = new Authentication();
