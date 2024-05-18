@@ -12,11 +12,7 @@ import { RefreshTokenIdsStorage } from './refresh-token-ids-storage';
 import { JwtRefreshTokenStrategy } from './strategy/jwt-refresh-token.strategy';
 import { IResponse } from '../shared/response.interface';
 import { LoginDto } from '../users/dto/create-user.dto';
-import {
-  IUser,
-  IUserToken,
-  verificationTypes,
-} from './authentication.interface';
+import { IUserToken, verificationTypes } from './authentication.interface';
 import { Authentication } from './entities/authentication.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -65,6 +61,12 @@ export class AuthenticationService {
 
     if (!passwordIsValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (user.status === 'inactive') {
+      throw new UnauthorizedException(
+        'Your account has been deactivated. Contact Admin',
+      );
     }
 
     const authentication = new Authentication();

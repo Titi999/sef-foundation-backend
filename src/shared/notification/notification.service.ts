@@ -38,4 +38,23 @@ export class NotificationService {
       },
     });
   }
+
+  async sendInviteEmail(
+    to: string,
+    name: string,
+    url: string,
+    password: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sef.com',
+      subject: 'User Invitation',
+      template: './userInvitation',
+      context: {
+        name,
+        url,
+        password,
+      },
+    });
+  }
 }

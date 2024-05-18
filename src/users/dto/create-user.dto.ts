@@ -34,3 +34,14 @@ export class LoginDto {
   @IsNotEmpty()
   password: string;
 }
+
+export class AddUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  role: string;
+
+  @IsNotEmpty()
+  name: string;
+}
