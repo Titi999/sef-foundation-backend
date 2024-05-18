@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { AddUserDto, CreateUserDto } from './dto/create-user.dto';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { generateRandomToken } from '../utility/tokenGenerator';
-import { statuses } from './user.interface';
+import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
 
 @Injectable()
@@ -112,10 +112,16 @@ export class UsersService {
     user.email = addUserDto.email;
     user.name = addUserDto.name;
     const salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(generateRandomToken(8), salt);
+    const password = generateRandomToken(8);
+    user.password = await bcrypt.hash(password, salt);
     user.role = addUserDto.role;
     const userResponse = await this.userRepository.save(user);
-    await this.notificationService.sendInviteEmail(user.email, user.name, '');
+    await this.notificationService.sendInviteEmail(
+      user.email,
+      user.name,
+      `${process.env.FRONTEND_URL}/login`,
+      password,
+    );
     return {
       message: 'User has been successfully invited via email',
       data: userResponse,

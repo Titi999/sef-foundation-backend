@@ -43,15 +43,17 @@ export class NotificationService {
     to: string,
     name: string,
     url: string,
+    password: string,
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
       from: 'info@sef.com',
       subject: 'User Invitation',
-      template: './forgotPassword',
+      template: './userInvitation',
       context: {
         name,
         url,
+        password,
       },
     });
   }
