@@ -8,7 +8,7 @@ import {
 import { AuthenticationService } from './authentication.service';
 import { LoginDto } from '../users/dto/create-user.dto';
 import { IResponse } from '../shared/response.interface';
-import { IUser, IUserToken } from './authentication.interface';
+import { IUser, IUserToken, LoginResponse } from './authentication.interface';
 import {
   ForgotPasswordDto,
   ResendCodeDto,
@@ -23,9 +23,7 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post('login')
-  async signIn(
-    @Body() loginDto: LoginDto,
-  ): Promise<IResponse<User | IUserToken>> {
+  async signIn(@Body() loginDto: LoginDto): Promise<IResponse<LoginResponse>> {
     return this.authService.signIn(loginDto);
   }
 

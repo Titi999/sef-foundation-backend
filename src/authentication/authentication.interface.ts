@@ -13,3 +13,8 @@ export interface IUser {
 export const verificationTypes = ['forgot-password', 'login'] as const;
 
 export type verificationType = (typeof verificationTypes)[number];
+
+export interface LoginResponse {
+  user: User;
+  token?: string;
+}
