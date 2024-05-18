@@ -12,7 +12,11 @@ import { RefreshTokenIdsStorage } from './refresh-token-ids-storage';
 import { JwtRefreshTokenStrategy } from './strategy/jwt-refresh-token.strategy';
 import { IResponse } from '../shared/response.interface';
 import { LoginDto } from '../users/dto/create-user.dto';
-import { IUserToken, verificationTypes } from './authentication.interface';
+import {
+  IUserToken,
+  LoginResponse,
+  verificationTypes,
+} from './authentication.interface';
 import { Authentication } from './entities/authentication.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -44,7 +48,7 @@ export class AuthenticationService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async signIn(loginDto: LoginDto): Promise<IResponse<User | IUserToken>> {
+  async signIn(loginDto: LoginDto): Promise<IResponse<LoginResponse>> {
     const { email, password } = loginDto;
 
     const user =
@@ -80,8 +84,7 @@ export class AuthenticationService {
         message: 'This is your first login, please reset your password',
         data: {
           user,
-          accessToken: authentication.token,
-          refreshToken: '',
+          token: authentication.token,
         },
       };
     }
@@ -99,7 +102,9 @@ export class AuthenticationService {
     delete user.password;
     return {
       message: 'An OTP has been sent to your email for verification',
-      data: user,
+      data: {
+        user,
+      },
     };
   }
 
