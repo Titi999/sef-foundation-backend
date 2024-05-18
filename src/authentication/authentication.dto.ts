@@ -50,3 +50,8 @@ export class ResendCodeDto {
   @IsUUID()
   id: string;
 }
+
+export class RefreshTokenDto {
+  @IsNotEmpty()
+  refreshToken: string;
+}

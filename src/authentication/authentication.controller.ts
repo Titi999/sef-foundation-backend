@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Post,
+  Req,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -11,11 +13,15 @@ import { IResponse } from '../shared/response.interface';
 import { IUser, IUserToken, LoginResponse } from './authentication.interface';
 import {
   ForgotPasswordDto,
+  RefreshTokenDto,
   ResendCodeDto,
   ResetPasswordDto,
   VerifyLoginDto,
 } from './authentication.dto';
 import { User } from '../users/entities/user.entity';
+import { JwtRefreshTokenGuard } from './guards/jwt-refresh-token.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Request } from 'express';
 
 @Controller('authentication')
 export class AuthenticationController {
@@ -57,5 +63,22 @@ export class AuthenticationController {
     @Body() resendCodeDto: ResendCodeDto,
   ): Promise<IResponse<IUser>> {
     return this.authService.resendCode(resendCodeDto);
+  }
+
+  @UseGuards(JwtRefreshTokenGuard)
+  @Post('refresh-token')
+  async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ accessToken: string }> {
+    return this.authService.refreshAccessToken(refreshTokenDto.refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('invalidate-token')
+  async invalidateToken(@Req() request: Request): Promise<{ message: string }> {
+    const authorizationHeader = request.headers.authorization;
+    const token = authorizationHeader.split(' ')[1];
+    await this.authService.invalidateToken(token);
+    return { message: 'Token invalidated successfully' };
   }
 }
