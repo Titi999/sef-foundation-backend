@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -49,5 +50,15 @@ export class StudentsController {
     @Body() addStudentDto: AddStudentDto,
   ): Promise<IResponse<Student>> {
     return this.studentsService.addStudentByBeneficiary(id, addStudentDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin', 'admin'])
+  @Patch('edit-student/:id')
+  async editStudent(
+    @Param('id') id: string,
+    @Body() addStudentDto: AddStudentDto,
+  ): Promise<IResponse<Student>> {
+    return this.studentsService.editStudent(id, addStudentDto);
   }
 }

@@ -58,6 +58,22 @@ export class StudentsService {
     };
   }
 
+  async editStudent(
+    id: string,
+    addStudentDto: AddStudentDto,
+  ): Promise<IResponse<Student>> {
+    const student = await this.studentsRepository.findOneByOrFail({
+      id,
+    });
+    this.setStudent(student, addStudentDto);
+    await this.studentsRepository.save(student);
+
+    return {
+      message: 'Student information edited successfully',
+      data: student,
+    };
+  }
+
   async addStudentByBeneficiary(
     id: string,
     addStudentDto: AddStudentDto,
