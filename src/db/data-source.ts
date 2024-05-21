@@ -4,6 +4,7 @@ import * as process from 'process';
 import { User } from '../users/entities/user.entity';
 import { SeederOptions } from 'typeorm-extension';
 import { Authentication } from '../authentication/entities/authentication.entity';
+import { Student } from '../students/student.entity';
 
 config();
 
@@ -17,7 +18,7 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   ssl: {
     rejectUnauthorized: false,
   },
-  entities: [User, Authentication],
+  entities: [User, Authentication, Student],
   synchronize: true,
   seeds: ['dist/db/seeds/**/*{.ts,.js}'],
 };

@@ -8,6 +8,7 @@ import { IPagination, IResponse } from '../shared/response.interface';
 import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
+import { userTypes } from './user.interface';
 
 @Injectable()
 export class UsersService {
@@ -168,5 +169,12 @@ export class UsersService {
       message: 'User status has been updated successfully',
       data: userResponse,
     };
+  }
+
+  async findUserByRole(id: string, role: userTypes) {
+    return this.userRepository.findOneBy({
+      id,
+      role,
+    });
   }
 }
