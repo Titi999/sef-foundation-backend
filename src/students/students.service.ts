@@ -90,6 +90,31 @@ export class StudentsService {
     };
   }
 
+  public async getStudent(id: string): Promise<IResponse<Student>> {
+    const student = await this.studentsRepository.findOneByOrFail({
+      id,
+    });
+
+    return {
+      message: 'Student loaded successfully',
+      data: student,
+    };
+  }
+
+  public async getStudentByBeneficiary(
+    id: string,
+  ): Promise<IResponse<Student>> {
+    const user = await this.userService.findOne(id);
+    const student = await this.studentsRepository.findOneByOrFail({
+      user,
+    });
+
+    return {
+      message: 'Student loaded successfully',
+      data: student,
+    };
+  }
+
   private setStudent(student: Student, addStudentDto: AddStudentDto) {
     student.name = addStudentDto.name;
     student.level = addStudentDto.level;

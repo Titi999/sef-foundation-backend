@@ -35,6 +35,9 @@ export class Student {
   @Column()
   parent: string;
 
+  @Column({ nullable: true })
+  parentPhone: string;
+
   @Column()
   school: string;
 
