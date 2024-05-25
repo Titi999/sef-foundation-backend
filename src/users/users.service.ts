@@ -8,7 +8,7 @@ import { IPagination, IResponse } from '../shared/response.interface';
 import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
-import { userTypes } from './user.interface';
+import { statusesTypes, userTypes } from './user.interface';
 
 @Injectable()
 export class UsersService {
@@ -70,6 +70,8 @@ export class UsersService {
   async getUsers(
     page: number = 1,
     searchTerm: string = '',
+    status: statusesTypes | '',
+    role: userTypes | '',
   ): Promise<IResponse<IPagination<User[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.userRepository.createQueryBuilder('user');
@@ -80,6 +82,18 @@ export class UsersService {
       });
       queryBuilder.orWhere('LOWER(user.email) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
+      });
+    }
+
+    if (status) {
+      queryBuilder.where('LOWER(user.status) = LOWER(:status)', {
+        status,
+      });
+    }
+
+    if (role) {
+      queryBuilder.where('LOWER(user.role) = LOWER(:role)', {
+        role,
       });
     }
 
