@@ -17,6 +17,7 @@ import { Student } from './student.entity';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { Roles } from '../authentication/guards/roles/roles.decorator';
+import { statusesTypes } from '../users/user.interface';
 
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,8 +30,9 @@ export class StudentsController {
   async getStudents(
     @Query('page') page: number,
     @Query('searchTerm') searchTerm: string,
+    @Query('status') status: statusesTypes | '',
   ): Promise<IResponse<IPagination<Student[]>>> {
-    return this.studentsService.getStudents(page, searchTerm);
+    return this.studentsService.getStudents(page, searchTerm, status);
   }
 
   @UsePipes(new ValidationPipe())
@@ -76,5 +78,15 @@ export class StudentsController {
     @Body() addStudentDto: AddStudentDto,
   ): Promise<IResponse<Student>> {
     return this.studentsService.editStudent(id, addStudentDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
+  @Patch('beneficiary/edit-student/:id')
+  async editStudentByBeneficiary(
+    @Param('id') id: string,
+    @Body() addStudentDto: AddStudentDto,
+  ): Promise<IResponse<Student>> {
+    return this.studentsService.editStudentByBeneficiary(id, addStudentDto);
   }
 }

@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { AddUserDto } from './dto/create-user.dto';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
+import { statusesTypes, userTypes } from './user.interface';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,8 +27,10 @@ export class UsersController {
   async getUsers(
     @Query('page') page: number,
     @Query('searchTerm') searchTerm: string,
+    @Query('status') status: statusesTypes | '',
+    @Query('role') role: userTypes | '',
   ): Promise<IResponse<IPagination<User[]>>> {
-    return this.usersService.getUsers(page, searchTerm);
+    return this.usersService.getUsers(page, searchTerm, status, role);
   }
 
   @Roles(['super admin'])

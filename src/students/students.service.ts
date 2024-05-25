@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { AddStudentDto } from './student.dto';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { UsersService } from '../users/users.service';
-import { userRoles } from '../users/user.interface';
+import { statusesTypes, userRoles } from '../users/user.interface';
 
 @Injectable()
 export class StudentsService {
@@ -18,6 +18,7 @@ export class StudentsService {
   async getStudents(
     page: number = 1,
     searchTerm: string = '',
+    status: statusesTypes | '',
   ): Promise<IResponse<IPagination<Student[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.studentsRepository.createQueryBuilder('student');
@@ -28,6 +29,12 @@ export class StudentsService {
       });
       queryBuilder.orWhere('LOWER(student.school) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
+      });
+    }
+
+    if (status) {
+      queryBuilder.where('LOWER(student.status) = LOWER(:status)', {
+        status,
       });
     }
 
@@ -62,7 +69,7 @@ export class StudentsService {
     id: string,
     addStudentDto: AddStudentDto,
   ): Promise<IResponse<Student>> {
-    const student = await this.studentsRepository.findOneByOrFail({
+    const student = await this.studentsRepository.findOneBy({
       id,
     });
     this.setStudent(student, addStudentDto);
@@ -70,6 +77,23 @@ export class StudentsService {
 
     return {
       message: 'Student information edited successfully',
+      data: student,
+    };
+  }
+
+  async editStudentByBeneficiary(
+    id: string,
+    addStudentDto: AddStudentDto,
+  ): Promise<IResponse<Student>> {
+    const user = await this.userService.findUserByRole(id, userRoles[2]);
+    const student = await this.studentsRepository.findOneByOrFail({
+      user,
+    });
+    this.setStudent(student, addStudentDto);
+    await this.studentsRepository.save(student);
+
+    return {
+      message: 'Student edited successfully',
       data: student,
     };
   }
