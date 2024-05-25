@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Seeder } from 'typeorm-extension';
 import * as process from 'process';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { userRoles } from '../../users/user.interface';
 import { User } from '../../users/entities/user.entity';
 import { dataSource } from '../data-source';
