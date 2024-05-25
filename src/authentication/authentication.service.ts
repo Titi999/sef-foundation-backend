@@ -33,7 +33,7 @@ import {
 import { NotificationService } from '../shared/notification/notification.service';
 import * as process from 'process';
 import { User } from '../users/entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { getTimeDifference } from '../utility/timeCalculator';
 
 @Injectable()
