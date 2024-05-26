@@ -87,7 +87,9 @@ export class StudentsService {
   ): Promise<IResponse<Student>> {
     const user = await this.userService.findUserByRole(id, userRoles[2]);
     const student = await this.studentsRepository.findOneByOrFail({
-      user,
+      user: {
+        id: user.id,
+      },
     });
     this.setStudent(student, addStudentDto);
     await this.studentsRepository.save(student);
@@ -130,7 +132,9 @@ export class StudentsService {
   ): Promise<IResponse<Student>> {
     const user = await this.userService.findOne(id);
     const student = await this.studentsRepository.findOneByOrFail({
-      user,
+      user: {
+        id: user.id,
+      },
     });
 
     return {
