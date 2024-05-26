@@ -20,6 +20,9 @@ export class AddStudentDto {
   @IsNotEmpty()
   phone: string;
 
+  @IsNotEmpty()
+  parentPhone: string;
+
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
