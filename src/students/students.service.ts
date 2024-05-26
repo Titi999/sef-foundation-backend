@@ -146,5 +146,6 @@ export class StudentsService {
     student.parent = addStudentDto.parent;
     student.phone = addStudentDto.phone;
     student.school = addStudentDto.school;
+    student.parentPhone = addStudentDto.parentPhone;
   }
 }
