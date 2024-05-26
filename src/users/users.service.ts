@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -9,6 +14,7 @@ import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
 import { statusesTypes, userTypes } from './user.interface';
+import { ChangePasswordDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -38,7 +44,7 @@ export class UsersService {
   }
 
   async validateUser(email: string, password: string): Promise<unknown> {
-    const user = await this.findByEmail(email);
+    const user = await this.findUserIncludingPasswordByEmail(email);
     if (user && (await this.validatePassword(password, user.password))) {
       const { ...result } = user;
       return result;
@@ -190,5 +196,34 @@ export class UsersService {
       id,
       role,
     });
+  }
+
+  async changePassword(id: string, changePasswordDto: ChangePasswordDto) {
+    const user = await this.userRepository.findOneByOrFail({ id });
+    const validate = await this.validateUser(
+      user.email,
+      changePasswordDto.password,
+    );
+    if (!validate) {
+      throw new UnauthorizedException('Invalid old password');
+    }
+
+    if (changePasswordDto.newPassword !== changePasswordDto.confirmPassword) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'New Password and confirm password do not match',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(changePasswordDto.password, salt);
+    await this.userRepository.save(user);
+
+    return {
+      message: 'User password change successfully',
+      data: user,
+    };
   }
 }

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,6 +17,7 @@ import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { AddUserDto } from './dto/create-user.dto';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { statusesTypes, userTypes } from './user.interface';
+import { ChangePasswordDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -58,5 +60,13 @@ export class UsersController {
   @Get('status/:id')
   async changeStatus(@Param('id') id: string): Promise<IResponse<User>> {
     return this.usersService.changeStatus(id);
+  }
+
+  @Patch('change-password/:id')
+  async changePassword(
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<IResponse<User>> {
+    return this.usersService.changePassword(id, changePasswordDto);
   }
 }
