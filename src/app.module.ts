@@ -11,6 +11,7 @@ import { join } from 'path';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { StudentsModule } from './students/students.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { StudentsModule } from './students/students.module';
     }),
     StudentsModule,
     ConfigModule.forRoot(),
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
