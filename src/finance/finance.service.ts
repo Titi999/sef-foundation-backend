@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Budget } from './entities/budget.entity';
 import { IPagination, IResponse } from '../shared/response.interface';
-import { statusesTypes } from '../users/user.interface';
+import { Disbursement } from './entities/disbursement.entity';
 
 @Injectable()
 export class FinanceService {
@@ -14,6 +14,8 @@ export class FinanceService {
     private readonly budgetDistributionRepository: Repository<BudgetDistribution>,
     @InjectRepository(Budget)
     private readonly budgetRepository: Repository<Budget>,
+    @InjectRepository(Disbursement)
+    private readonly disbursementRepository: Repository<Disbursement>,
   ) {}
 
   async createBudget(
@@ -107,5 +109,39 @@ export class FinanceService {
       (total, budgetDistribution) => total + budgetDistribution.amount,
       0,
     );
+  }
+
+  public async getDisbursement(id: string): Promise<IResponse<Disbursement>> {
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id,
+    });
+
+    return {
+      message: 'Disbursement loaded successfully',
+      data: disbursement,
+    };
+  }
+
+  async getDisbursements(
+    page: number = 1,
+  ): Promise<IResponse<IPagination<Disbursement[]>>> {
+    const skip = (page - 1) * 10;
+    const queryBuilder =
+      this.disbursementRepository.createQueryBuilder('budget');
+
+    const [disbursements, total] = await queryBuilder
+      .skip(skip)
+      .take(10)
+      .getManyAndCount();
+
+    return {
+      message: 'Disbursements loaded successfully',
+      data: {
+        total,
+        currentPage: page,
+        totalPages: Math.ceil(total / 10),
+        items: disbursements,
+      },
+    };
   }
 }

@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   Unique,
@@ -11,6 +12,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/entities/user.entity';
 import { statuses } from '../users/user.interface';
+import { BudgetDistribution } from '../finance/entities/budgetDistribution.entity';
+import { Disbursement } from '../finance/entities/disbursement.entity';
 
 @Entity({ name: 'students' })
 export class Student {
@@ -50,6 +53,12 @@ export class Student {
   @Column({ nullable: true })
   @Unique(['phone'])
   phone: string;
+
+  @OneToMany(() => Disbursement, (disbursement) => disbursement.student, {
+    eager: true,
+  })
+  @JoinColumn()
+  disbursement: Disbursement[];
 
   @Column({ nullable: true, enum: [statuses], default: 'active' })
   status: string;

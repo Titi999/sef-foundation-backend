@@ -18,6 +18,7 @@ import { FinanceService } from './finance.service';
 import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
+import { Disbursement } from './entities/disbursement.entity';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,5 +65,23 @@ export class FinanceController {
   @Delete('budget')
   async deleteBudget(@Param('id') id: string): Promise<IResponse<Budget>> {
     return this.financeService.deleteBudget(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('disbursement/:id')
+  async getDisbursement(
+    @Param('id') id: string,
+  ): Promise<IResponse<Disbursement>> {
+    return this.financeService.getDisbursement(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('disbursements')
+  async getDisbursements(
+    @Query('page') page: number,
+  ): Promise<IResponse<IPagination<Disbursement[]>>> {
+    return this.financeService.getDisbursements(page);
   }
 }

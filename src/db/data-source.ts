@@ -5,6 +5,10 @@ import { User } from '../users/entities/user.entity';
 import { SeederOptions } from 'typeorm-extension';
 import { Authentication } from '../authentication/entities/authentication.entity';
 import { Student } from '../students/student.entity';
+import { Budget } from '../finance/entities/budget.entity';
+import { BudgetDistribution } from '../finance/entities/budgetDistribution.entity';
+import { DisbursementDistribution } from '../finance/entities/disbursementDistribution.entity';
+import { Disbursement } from '../finance/entities/disbursement.entity';
 
 config();
 
@@ -18,7 +22,15 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   ssl: {
     rejectUnauthorized: false,
   },
-  entities: [User, Authentication, Student],
+  entities: [
+    User,
+    Authentication,
+    Student,
+    Budget,
+    BudgetDistribution,
+    DisbursementDistribution,
+    Disbursement,
+  ],
   synchronize: true,
   seeds: ['dist/db/seeds/**/*{.ts,.js}'],
 };
