@@ -6,6 +6,10 @@ import { Repository } from 'typeorm';
 import { Budget } from './entities/budget.entity';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { Disbursement } from './entities/disbursement.entity';
+import { CreateDisbursementDto } from './dto/disbursement.dto';
+import { StudentsService } from '../students/students.service';
+import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
+import { statuses } from '../users/user.interface';
 
 @Injectable()
 export class FinanceService {
@@ -16,11 +20,21 @@ export class FinanceService {
     private readonly budgetRepository: Repository<Budget>,
     @InjectRepository(Disbursement)
     private readonly disbursementRepository: Repository<Disbursement>,
+    @InjectRepository(DisbursementDistribution)
+    private readonly disbursementDistribution: DisbursementDistribution,
+    private readonly studentsService: StudentsService,
   ) {}
 
   async createBudget(
     createBudgetDto: CreateBudgetDto,
   ): Promise<IResponse<Budget>> {
+    const activeBudget = await this.budgetRepository.findOneBy({
+      status: statuses[0],
+    });
+    if (activeBudget) {
+      activeBudget.status = statuses[1];
+      await this.budgetRepository.save(activeBudget);
+    }
     const budget = new Budget();
     await this.setBudget(createBudgetDto, budget);
     await this.budgetRepository.save(budget);
@@ -92,12 +106,12 @@ export class FinanceService {
         return this.budgetDistributionRepository.save(newDistribution);
       }),
     );
-    const totalDistribution =
-      this.getBudgetDistributionTotal(budgetDistributions);
     budget.budgetDistribution = budgetDistributions;
+    budget.totalDistribution =
+      this.getBudgetDistributionTotal(budgetDistributions);
     budget.total = createBudgetDto.total;
-    budget.utilized = createBudgetDto.total - totalDistribution;
-    budget.surplus = createBudgetDto.total - budget.utilized;
+    budget.utilized = 0;
+    budget.surplus = createBudgetDto.total;
     budget.startDate = createBudgetDto.startDate;
     budget.endDate = createBudgetDto.endDate;
   }
@@ -142,6 +156,38 @@ export class FinanceService {
         totalPages: Math.ceil(total / 10),
         items: disbursements,
       },
+    };
+  }
+
+  async createDisbursement(
+    createDisbursementDto: CreateDisbursementDto,
+  ): Promise<IResponse<Disbursement>> {
+    const disbursement = new Disbursement();
+    const budget = await this.budgetRepository.findOneByOrFail({
+      id: createDisbursementDto.budgetId,
+    });
+    const student = await this.studentsService.getStudentById(
+      createDisbursementDto.studentId,
+    );
+    disbursement.amount = createDisbursementDto.amount;
+    disbursement.budget = budget;
+    disbursement.student = student;
+    disbursement.disbursementDistribution = await Promise.all(
+      createDisbursementDto.disbursementDistribution.map(
+        async (distribution) => {
+          const newDistribution = new DisbursementDistribution();
+          newDistribution.amount = distribution.amount;
+          newDistribution.title = distribution.title;
+          return this.disbursementRepository.save(newDistribution);
+        },
+      ),
+    );
+
+    await this.disbursementRepository.save(disbursement);
+
+    return {
+      message: 'You have successfully created a disbursement',
+      data: disbursement,
     };
   }
 }

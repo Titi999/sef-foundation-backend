@@ -19,6 +19,7 @@ import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { Disbursement } from './entities/disbursement.entity';
+import { CreateDisbursementDto } from './dto/disbursement.dto';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -83,5 +84,14 @@ export class FinanceController {
     @Query('page') page: number,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
     return this.financeService.getDisbursements(page);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Post('disbursement')
+  async createDisbursement(
+    @Body() createDisbursementDto: CreateDisbursementDto,
+  ): Promise<IResponse<Disbursement>> {
+    return await this.financeService.createDisbursement(createDisbursementDto);
   }
 }
