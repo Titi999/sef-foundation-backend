@@ -36,6 +36,13 @@ export class StudentsController {
   }
 
   @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('all')
+  async getAllStudents(): Promise<IResponse<Student[]>> {
+    return this.studentsService.getAllStudents();
+  }
+
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin', 'admin'])
   @Get(':id')
   async getStudent(@Param('id') id: string): Promise<IResponse<Student>> {

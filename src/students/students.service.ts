@@ -152,4 +152,17 @@ export class StudentsService {
     student.school = addStudentDto.school;
     student.parentPhone = addStudentDto.parentPhone;
   }
+
+  public async getStudentById(id: string) {
+    return this.studentsRepository.findOneByOrFail({ id });
+  }
+
+  public async getAllStudents(): Promise<IResponse<Student[]>> {
+    const students = await this.studentsRepository.find();
+
+    return {
+      message: 'You have successfully loaded students',
+      data: students,
+    };
+  }
 }

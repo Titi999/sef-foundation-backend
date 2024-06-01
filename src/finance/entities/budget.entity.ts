@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { BudgetDistribution } from './budgetDistribution.entity';
+import { statuses } from '../../users/user.interface';
 
 @Entity({ name: 'budgets' })
 export class Budget {
@@ -44,6 +45,12 @@ export class Budget {
   )
   @JoinColumn()
   budgetDistribution: BudgetDistribution[];
+
+  @Column()
+  totalDistribution: number;
+
+  @Column({ enum: [statuses], default: statuses[0] })
+  status: string;
 
   @CreateDateColumn({
     type: 'timestamp',

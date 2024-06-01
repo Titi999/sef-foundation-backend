@@ -36,7 +36,7 @@ export class User {
   @Column({ enum: userRoles })
   role: string;
 
-  @Column({ enum: [statuses], default: 'active' })
+  @Column({ enum: [statuses], default: statuses[0] })
   status: string;
 
   @Column({ nullable: true })
