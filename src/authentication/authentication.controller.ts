@@ -69,7 +69,7 @@ export class AuthenticationController {
   @Post('refresh-token')
   async refreshToken(
     @Body() refreshTokenDto: RefreshTokenDto,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ data: { accessToken: string } }> {
     return this.authService.refreshAccessToken(refreshTokenDto.refreshToken);
   }
 

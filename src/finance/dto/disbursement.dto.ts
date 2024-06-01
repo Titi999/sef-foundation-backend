@@ -5,9 +5,6 @@ export class CreateDisbursementDto {
   studentId: string;
 
   @IsNotEmpty()
-  budgetId: string;
-
-  @IsNotEmpty()
   amount: number;
 
   @IsNotEmpty()
