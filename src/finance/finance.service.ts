@@ -21,7 +21,7 @@ export class FinanceService {
     @InjectRepository(Disbursement)
     private readonly disbursementRepository: Repository<Disbursement>,
     @InjectRepository(DisbursementDistribution)
-    private readonly disbursementDistribution: DisbursementDistribution,
+    private readonly disbursementDistributionRepository: Repository<DisbursementDistribution>,
     private readonly studentsService: StudentsService,
   ) {}
 
@@ -141,8 +141,8 @@ export class FinanceService {
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder =
-      this.disbursementRepository.createQueryBuilder('budget');
-
+      this.disbursementRepository.createQueryBuilder('disbursement');
+    queryBuilder.innerJoinAndSelect('disbursement.student', 'student');
     const [disbursements, total] = await queryBuilder
       .skip(skip)
       .take(10)
@@ -164,7 +164,7 @@ export class FinanceService {
   ): Promise<IResponse<Disbursement>> {
     const disbursement = new Disbursement();
     const budget = await this.budgetRepository.findOneByOrFail({
-      id: createDisbursementDto.budgetId,
+      status: statuses[0],
     });
     const student = await this.studentsService.getStudentById(
       createDisbursementDto.studentId,
@@ -178,7 +178,7 @@ export class FinanceService {
           const newDistribution = new DisbursementDistribution();
           newDistribution.amount = distribution.amount;
           newDistribution.title = distribution.title;
-          return this.disbursementRepository.save(newDistribution);
+          return this.disbursementDistributionRepository.save(newDistribution);
         },
       ),
     );
