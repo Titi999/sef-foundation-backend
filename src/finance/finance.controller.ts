@@ -94,4 +94,22 @@ export class FinanceController {
   ): Promise<IResponse<Disbursement>> {
     return await this.financeService.createDisbursement(createDisbursementDto);
   }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('disbursements/approve/:id')
+  async approveDisbursement(
+    @Param('id') id: string,
+  ): Promise<IResponse<Disbursement>> {
+    return this.financeService.approveDisbursement(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('disbursements/decline/:id')
+  async declineDisbursement(
+    @Param('id') id: string,
+  ): Promise<IResponse<Disbursement>> {
+    return this.financeService.declineDisbursement(id);
+  }
 }

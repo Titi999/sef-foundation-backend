@@ -190,4 +190,43 @@ export class FinanceService {
       data: disbursement,
     };
   }
+
+  public async approveDisbursement(
+    id: string,
+  ): Promise<IResponse<Disbursement>> {
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id,
+    });
+
+    disbursement.status = 'approved';
+    const budgetId = await disbursement.budget.id;
+    const budget = await this.budgetRepository.findOneByOrFail({
+      id: budgetId,
+    });
+    budget.utilized += disbursement.amount;
+    budget.surplus = budget.total - budget.utilized;
+
+    await this.budgetRepository.save(budget);
+    await this.disbursementRepository.save(disbursement);
+
+    return {
+      message: 'Disbursement approved successfully',
+      data: disbursement,
+    };
+  }
+
+  public async declineDisbursement(
+    id: string,
+  ): Promise<IResponse<Disbursement>> {
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id,
+    });
+    disbursement.status = 'declined';
+    await this.disbursementRepository.save(disbursement);
+
+    return {
+      message: 'Disbursement declined successfully',
+      data: disbursement,
+    };
+  }
 }
