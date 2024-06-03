@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -12,8 +13,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/entities/user.entity';
 import { statuses } from '../users/user.interface';
-import { BudgetDistribution } from '../finance/entities/budgetDistribution.entity';
 import { Disbursement } from '../finance/entities/disbursement.entity';
+import { School } from '../schools/school.entity';
 
 @Entity({ name: 'students' })
 export class Student {
@@ -41,8 +42,9 @@ export class Student {
   @Column({ nullable: true })
   parentPhone: string;
 
-  @Column()
-  school: string;
+  @ManyToOne(() => School, { eager: true })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
 
   @Column()
   level: string;

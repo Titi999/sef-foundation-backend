@@ -11,6 +11,8 @@ import { Student } from '../students/student.entity';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { NotificationService } from '../shared/notification/notification.service';
+import { SchoolsService } from '../schools/schools.service';
+import { School } from '../schools/school.entity';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { NotificationService } from '../shared/notification/notification.service
       DisbursementDistribution,
       Student,
       User,
+      School,
     ]),
   ],
   providers: [
@@ -28,6 +31,7 @@ import { NotificationService } from '../shared/notification/notification.service
     StudentsService,
     UsersService,
     NotificationService,
+    SchoolsService,
   ],
   controllers: [FinanceController],
 })
