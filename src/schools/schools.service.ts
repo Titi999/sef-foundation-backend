@@ -96,4 +96,12 @@ export class SchoolsService {
   public findSchoolById(id: string): Promise<School> {
     return this.schoolRepository.findOneByOrFail({ id });
   }
+
+  public async getAllSchools(): Promise<IResponse<School[]>> {
+    const school = await this.schoolRepository.find();
+    return {
+      message: 'Schools loaded successfully',
+      data: school,
+    };
+  }
 }
