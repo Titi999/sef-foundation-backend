@@ -24,3 +24,8 @@ export class ChangePasswordDto {
   @IsNotEmpty()
   confirmPassword: string;
 }
+
+export class ChangeNameDto {
+  @IsNotEmpty()
+  name: string;
+}

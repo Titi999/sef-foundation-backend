@@ -17,7 +17,7 @@ import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { AddUserDto } from './dto/create-user.dto';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { statusesTypes, userTypes } from './user.interface';
-import { ChangePasswordDto } from './dto/update-user.dto';
+import { ChangeNameDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,5 +68,13 @@ export class UsersController {
     @Body() changePasswordDto: ChangePasswordDto,
   ): Promise<IResponse<User>> {
     return this.usersService.changePassword(id, changePasswordDto);
+  }
+
+  @Patch('change-name/:id')
+  async changeName(
+    @Param('id') id: string,
+    @Body() changeNameDto: ChangeNameDto,
+  ): Promise<IResponse<User>> {
+    return this.usersService.changeName(id, changeNameDto);
   }
 }

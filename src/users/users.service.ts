@@ -14,7 +14,7 @@ import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
 import { statusesTypes, userTypes } from './user.interface';
-import { ChangePasswordDto } from './dto/update-user.dto';
+import { ChangeNameDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -223,6 +223,20 @@ export class UsersService {
 
     return {
       message: 'User password change successfully',
+      data: user,
+    };
+  }
+
+  public async changeName(
+    id: string,
+    { name }: ChangeNameDto,
+  ): Promise<IResponse<User>> {
+    const user = await this.userRepository.findOneByOrFail({ id });
+    user.name = name;
+    await this.userRepository.save(user);
+
+    return {
+      message: 'User name changed successfully',
       data: user,
     };
   }
