@@ -20,6 +20,12 @@ export class SchoolsController {
   constructor(private readonly schoolsService: SchoolsService) {}
 
   @Roles(['super admin', 'admin'])
+  @Get('all')
+  async getAllSchool(): Promise<IResponse<School[]>> {
+    return this.schoolsService.getAllSchools();
+  }
+
+  @Roles(['super admin', 'admin'])
   @Post('')
   async createSchool(
     @Body() createSchoolDto: CreateSchoolDto,
