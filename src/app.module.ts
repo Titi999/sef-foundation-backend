@@ -12,6 +12,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { StudentsModule } from './students/students.module';
 import { FinanceModule } from './finance/finance.module';
+import { SchoolsModule } from './schools/schools.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { FinanceModule } from './finance/finance.module';
     StudentsModule,
     ConfigModule.forRoot(),
     FinanceModule,
+    SchoolsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,6 +6,7 @@ import { AddStudentDto } from './student.dto';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { UsersService } from '../users/users.service';
 import { statusesTypes, userRoles } from '../users/user.interface';
+import { SchoolsService } from '../schools/schools.service';
 
 @Injectable()
 export class StudentsService {
@@ -13,6 +14,7 @@ export class StudentsService {
     @InjectRepository(Student)
     private readonly studentsRepository: Repository<Student>,
     private readonly userService: UsersService,
+    private readonly schoolsService: SchoolsService,
   ) {}
 
   async getStudents(
@@ -143,13 +145,15 @@ export class StudentsService {
     };
   }
 
-  private setStudent(student: Student, addStudentDto: AddStudentDto) {
+  private async setStudent(student: Student, addStudentDto: AddStudentDto) {
     student.name = addStudentDto.name;
     student.level = addStudentDto.level;
     student.description = addStudentDto.description;
     student.parent = addStudentDto.parent;
     student.phone = addStudentDto.phone;
-    student.school = addStudentDto.school;
+    student.school = await this.schoolsService.findSchoolById(
+      addStudentDto.school,
+    );
     student.parentPhone = addStudentDto.parentPhone;
   }
 

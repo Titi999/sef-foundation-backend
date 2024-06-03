@@ -9,6 +9,7 @@ import { Budget } from '../finance/entities/budget.entity';
 import { BudgetDistribution } from '../finance/entities/budgetDistribution.entity';
 import { DisbursementDistribution } from '../finance/entities/disbursementDistribution.entity';
 import { Disbursement } from '../finance/entities/disbursement.entity';
+import { School } from '../schools/school.entity';
 
 config();
 
@@ -30,6 +31,7 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
     BudgetDistribution,
     DisbursementDistribution,
     Disbursement,
+    School,
   ],
   synchronize: true,
   seeds: ['dist/db/seeds/**/*{.ts,.js}'],
