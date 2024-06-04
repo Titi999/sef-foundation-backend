@@ -12,7 +12,11 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { CreateBudgetDto } from './dto/budget.dto';
-import { IPagination, IResponse } from '../shared/response.interface';
+import {
+  IOverviewStatistics,
+  IPagination,
+  IResponse,
+} from '../shared/response.interface';
 import { Budget } from './entities/budget.entity';
 import { FinanceService } from './finance.service';
 import { Roles } from '../authentication/guards/roles/roles.decorator';
@@ -111,5 +115,14 @@ export class FinanceController {
     @Param('id') id: string,
   ): Promise<IResponse<Disbursement>> {
     return this.financeService.declineDisbursement(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin', 'admin'])
+  @Get('statistics')
+  async getOverviewStats(
+    @Query('year') year: string,
+  ): Promise<IResponse<IOverviewStatistics>> {
+    return this.financeService.getOverviewStats(year);
   }
 }
