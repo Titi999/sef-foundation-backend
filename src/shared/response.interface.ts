@@ -9,3 +9,12 @@ export interface IPagination<T> {
   totalPages: number;
   items: T;
 }
+
+export interface IOverviewStatistics {
+  totalFundingDisbursed: IMonthTotal[];
+}
+
+export interface IMonthTotal {
+  month: string;
+  total: number;
+}

@@ -4,12 +4,17 @@ import { BudgetDistribution } from './entities/budgetDistribution.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Budget } from './entities/budget.entity';
-import { IPagination, IResponse } from '../shared/response.interface';
+import {
+  IMonthTotal,
+  IOverviewStatistics,
+  IPagination,
+  IResponse,
+} from '../shared/response.interface';
 import { Disbursement } from './entities/disbursement.entity';
 import { CreateDisbursementDto } from './dto/disbursement.dto';
 import { StudentsService } from '../students/students.service';
 import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
-import { statuses } from '../users/user.interface';
+import { disbursementStatuses, statuses } from '../users/user.interface';
 
 @Injectable()
 export class FinanceService {
@@ -228,5 +233,58 @@ export class FinanceService {
       message: 'Disbursement declined successfully',
       data: disbursement,
     };
+  }
+
+  public async getOverviewStats(
+    year: string,
+  ): Promise<IResponse<IOverviewStatistics>> {
+    return {
+      message: 'You have successfully loaded statistics',
+      data: {
+        totalFundingDisbursed: await this.totalFundingDisbursedStats(year),
+      },
+    };
+  }
+
+  public async totalFundingDisbursedStats(
+    year?: string,
+  ): Promise<IMonthTotal[]> {
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .select('EXTRACT(MONTH FROM disbursement.created_at)', 'month')
+      .addSelect('SUM(disbursement.amount)', 'total')
+      .groupBy('EXTRACT(MONTH FROM disbursement.created_at)')
+      .orderBy('EXTRACT(MONTH FROM disbursement.created_at)', 'ASC');
+
+    queryBuilder.where('disbursement.status = :status', {
+      status: disbursementStatuses[1],
+    });
+
+    if (year) {
+      queryBuilder.where('EXTRACT(YEAR FROM disbursement.created_at) = :year', {
+        year,
+      });
+    }
+
+    const rawResults = await queryBuilder.getRawMany();
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    return rawResults.map((result) => ({
+      month: monthNames[result.month - 1],
+      total: parseFloat(result.total),
+    }));
   }
 }
