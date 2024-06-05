@@ -281,7 +281,6 @@ export class FinanceService {
     const queryBuilder = this.budgetDistributionRepository
       .createQueryBuilder('budgetDistribution')
       .select(['budgetDistribution.title', 'budgetDistribution.amount']);
-    console.log(await queryBuilder.getRawMany());
     if (year) {
       queryBuilder.where(
         'EXTRACT(YEAR FROM budgetDistribution.created_at) = :year',
