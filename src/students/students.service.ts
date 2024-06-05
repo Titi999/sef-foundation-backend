@@ -169,4 +169,10 @@ export class StudentsService {
       data: students,
     };
   }
+
+  public async getAllStudentsCount(): Promise<number> {
+    const queryBuilder = this.studentsRepository.createQueryBuilder('student');
+
+    return queryBuilder.getCount();
+  }
 }
