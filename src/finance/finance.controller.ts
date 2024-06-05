@@ -121,7 +121,7 @@ export class FinanceController {
   @Roles(['super admin', 'admin'])
   @Get('statistics')
   async getOverviewStats(
-    @Query('year') year: string,
+    @Query('year') year: number,
   ): Promise<IResponse<IOverviewStatistics>> {
     return this.financeService.getOverviewStats(year);
   }
