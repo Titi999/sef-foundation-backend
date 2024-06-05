@@ -244,6 +244,9 @@ export class FinanceService {
       data: {
         totalFundingDisbursed: await this.totalFundingDisbursedStats(year),
         fundingDistribution: await this.getBudgetDistributions(year),
+        fundsAllocated: await this.getFundsAllocated(year),
+        fundsDisbursed: await this.getFundsDisbursed(year),
+        studentsSupported: await this.studentsService.getAllStudentsCount(),
       },
     };
   }
@@ -268,7 +271,6 @@ export class FinanceService {
       });
     }
     const rawResults = await queryBuilder.getRawMany();
-    console.log(rawResults, 'raw');
     return rawResults.map((result) => ({
       month: monthNames[result.month - 1],
       total: parseFloat(result.total),
@@ -294,5 +296,39 @@ export class FinanceService {
       title: result.budgetDistribution_title,
       amount: parseFloat(result.budgetDistribution_amount),
     }));
+  }
+
+  private async getFundsAllocated(year?: number): Promise<number> {
+    const queryBuilder = this.budgetRepository
+      .createQueryBuilder('budget')
+      .select('SUM(budget.total)', 'sum');
+
+    if (year) {
+      queryBuilder.where('EXTRACT(YEAR FROM budget.created_at) = :year', {
+        year,
+      });
+    }
+
+    const result = await queryBuilder.getRawOne();
+    return parseFloat(result.sum);
+  }
+
+  private async getFundsDisbursed(year?: number): Promise<number> {
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .select('SUM(disbursement.amount)', 'sum');
+
+    queryBuilder.where('disbursement.status = :status', {
+      status: disbursementStatuses[1],
+    });
+
+    if (year) {
+      queryBuilder.where('EXTRACT(YEAR FROM disbursement.created_at) = :year', {
+        year,
+      });
+    }
+
+    const result = await queryBuilder.getRawOne();
+    return parseFloat(result.sum);
   }
 }
