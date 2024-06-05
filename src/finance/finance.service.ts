@@ -15,6 +15,7 @@ import { CreateDisbursementDto } from './dto/disbursement.dto';
 import { StudentsService } from '../students/students.service';
 import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
 import { disbursementStatuses, statuses } from '../users/user.interface';
+import { monthNames } from '../utility/constants';
 
 @Injectable()
 export class FinanceService {
@@ -236,18 +237,19 @@ export class FinanceService {
   }
 
   public async getOverviewStats(
-    year: string,
+    year: number,
   ): Promise<IResponse<IOverviewStatistics>> {
     return {
       message: 'You have successfully loaded statistics',
       data: {
         totalFundingDisbursed: await this.totalFundingDisbursedStats(year),
+        fundingDistribution: await this.getBudgetDistributions(year),
       },
     };
   }
 
-  public async totalFundingDisbursedStats(
-    year?: string,
+  private async totalFundingDisbursedStats(
+    year?: number,
   ): Promise<IMonthTotal[]> {
     const queryBuilder = this.disbursementRepository
       .createQueryBuilder('disbursement')
@@ -265,26 +267,33 @@ export class FinanceService {
         year,
       });
     }
-
     const rawResults = await queryBuilder.getRawMany();
-    const monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
+    console.log(rawResults, 'raw');
     return rawResults.map((result) => ({
       month: monthNames[result.month - 1],
       total: parseFloat(result.total),
+    }));
+  }
+
+  private async getBudgetDistributions(
+    year?: number,
+  ): Promise<{ title: string; amount: number }[]> {
+    const queryBuilder = this.budgetDistributionRepository
+      .createQueryBuilder('budgetDistribution')
+      .select(['budgetDistribution.title', 'budgetDistribution.amount']);
+    console.log(await queryBuilder.getRawMany());
+    if (year) {
+      queryBuilder.where(
+        'EXTRACT(YEAR FROM budgetDistribution.created_at) = :year',
+        { year },
+      );
+    }
+
+    const rawResults = await queryBuilder.getRawMany();
+
+    return rawResults.map((result) => ({
+      title: result.budgetDistribution_title,
+      amount: parseFloat(result.budgetDistribution_amount),
     }));
   }
 }
