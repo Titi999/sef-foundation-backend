@@ -23,7 +23,11 @@ import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { Disbursement } from './entities/disbursement.entity';
-import { CreateDisbursementDto } from './dto/disbursement.dto';
+import {
+  CreateBeneficiaryDisbursemenDto,
+  CreateDisbursementDto,
+} from './dto/disbursement.dto';
+import { disbursementStatusesType } from '../users/user.interface';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -91,12 +95,36 @@ export class FinanceController {
   }
 
   @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
+  @Get('disbursements/:id')
+  async getBeneficiaryDisbursements(
+    @Param('id') id: string,
+    @Query('page') page: number,
+    @Query('status') status: disbursementStatusesType,
+  ): Promise<IResponse<IPagination<Disbursement[]>>> {
+    return this.financeService.getBeneficiaryDisbursements(id, page, status);
+  }
+
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Post('disbursement')
   async createDisbursement(
     @Body() createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
     return await this.financeService.createDisbursement(createDisbursementDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
+  @Post('disbursement/:id')
+  async createBeneficiaryDisbursement(
+    @Param('id') id: string,
+    @Body() createDisbursementDto: CreateBeneficiaryDisbursemenDto,
+  ): Promise<IResponse<Disbursement>> {
+    return await this.financeService.createBeneficiaryDisbursement(
+      id,
+      createDisbursementDto,
+    );
   }
 
   @UsePipes(new ValidationPipe())
