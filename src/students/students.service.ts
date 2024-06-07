@@ -175,4 +175,13 @@ export class StudentsService {
 
     return queryBuilder.getCount();
   }
+
+  public async findStudentByUserId(id: string) {
+    const user = await this.userService.findOne(id);
+    return await this.studentsRepository.findOneByOrFail({
+      user: {
+        id: user.id,
+      },
+    });
+  }
 }

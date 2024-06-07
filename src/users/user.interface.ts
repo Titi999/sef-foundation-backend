@@ -11,3 +11,5 @@ export const disbursementStatuses = [
   'approved',
   'declined',
 ] as const;
+
+export type disbursementStatusesType = (typeof disbursementStatuses)[number];

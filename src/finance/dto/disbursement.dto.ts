@@ -1,14 +1,16 @@
 import { IsNotEmpty, IsNumber } from 'class-validator';
 
-export class CreateDisbursementDto {
-  @IsNotEmpty()
-  studentId: string;
-
+export class CreateBeneficiaryDisbursemenDto {
   @IsNotEmpty()
   amount: number;
 
   @IsNotEmpty()
   disbursementDistribution: CreateDisbursementDistributionDto[];
+}
+
+export class CreateDisbursementDto extends CreateBeneficiaryDisbursemenDto {
+  @IsNotEmpty()
+  studentId: string;
 }
 
 export class CreateDisbursementDistributionDto {

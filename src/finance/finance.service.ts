@@ -11,10 +11,17 @@ import {
   IResponse,
 } from '../shared/response.interface';
 import { Disbursement } from './entities/disbursement.entity';
-import { CreateDisbursementDto } from './dto/disbursement.dto';
+import {
+  CreateBeneficiaryDisbursemenDto,
+  CreateDisbursementDto,
+} from './dto/disbursement.dto';
 import { StudentsService } from '../students/students.service';
 import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
-import { disbursementStatuses, statuses } from '../users/user.interface';
+import {
+  disbursementStatuses,
+  disbursementStatusesType,
+  statuses,
+} from '../users/user.interface';
 import { monthNames } from '../utility/constants';
 
 @Injectable()
@@ -165,6 +172,39 @@ export class FinanceService {
     };
   }
 
+  async getBeneficiaryDisbursements(
+    id: string,
+    page: number = 1,
+    status: disbursementStatusesType,
+  ): Promise<IResponse<IPagination<Disbursement[]>>> {
+    const studentId = (await this.studentsService.findStudentByUserId(id)).id;
+    const skip = (page - 1) * 10;
+    const queryBuilder =
+      this.disbursementRepository.createQueryBuilder('disbursement');
+    queryBuilder.where('disbursement.studentId = :studentId', {
+      studentId,
+    });
+    if (status) {
+      queryBuilder.where('disbursement.status = :status', {
+        status,
+      });
+    }
+    const [disbursements, total] = await queryBuilder
+      .skip(skip)
+      .take(10)
+      .getManyAndCount();
+
+    return {
+      message: 'Disbursements loaded successfully',
+      data: {
+        total,
+        currentPage: page,
+        totalPages: Math.ceil(total / 10),
+        items: disbursements,
+      },
+    };
+  }
+
   async createDisbursement(
     createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
@@ -195,6 +235,18 @@ export class FinanceService {
       message: 'You have successfully created a disbursement',
       data: disbursement,
     };
+  }
+
+  public async createBeneficiaryDisbursement(
+    id: string,
+    createBeneficiaryDisbursementDto: CreateBeneficiaryDisbursemenDto,
+  ): Promise<IResponse<Disbursement>> {
+    const studentId = (await this.studentsService.findStudentByUserId(id)).id;
+    const createDisbursementDto: CreateDisbursementDto = {
+      studentId,
+      ...createBeneficiaryDisbursementDto,
+    };
+    return await this.createDisbursement(createDisbursementDto);
   }
 
   public async approveDisbursement(
