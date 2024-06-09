@@ -185,7 +185,7 @@ export class FinanceService {
       studentId,
     });
     if (status) {
-      queryBuilder.where('disbursement.status = :status', {
+      queryBuilder.andWhere('disbursement.status = :status', {
         status,
       });
     }

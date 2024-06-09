@@ -13,7 +13,7 @@ import { IPagination, IResponse } from '../shared/response.interface';
 import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
-import { statusesTypes, userTypes } from './user.interface';
+import { statuses, statusesTypes, userTypes } from './user.interface';
 import { ChangeNameDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -98,7 +98,7 @@ export class UsersService {
     }
 
     if (role) {
-      queryBuilder.where('LOWER(user.role) = LOWER(:role)', {
+      queryBuilder.andWhere('LOWER(user.role) = LOWER(:role)', {
         role,
       });
     }
@@ -239,5 +239,10 @@ export class UsersService {
       message: 'User name changed successfully',
       data: user,
     };
+  }
+
+  public async deactivate(user: User): Promise<void> {
+    user.status = statuses[1];
+    await this.userRepository.save(user);
   }
 }
