@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -95,5 +96,37 @@ export class StudentsController {
     @Body() addStudentDto: AddStudentDto,
   ): Promise<IResponse<Student>> {
     return this.studentsService.editStudentByBeneficiary(id, addStudentDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Delete(':id')
+  async deleteStudent(@Param('id') id: string): Promise<IResponse<Student>> {
+    return this.studentsService.deleteStudent(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('deactivate/:id')
+  async deactivateStudent(
+    @Param('id') id: string,
+  ): Promise<IResponse<Student>> {
+    return this.studentsService.deactivateStudent(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('activate/:id')
+  async activateStudent(@Param('id') id: string): Promise<IResponse<Student>> {
+    return this.studentsService.activateStudent(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
+  @Get('beneficiary-exists/:id')
+  async beneficiaryInfoExists(
+    @Param('id') id: string,
+  ): Promise<IResponse<boolean>> {
+    return this.studentsService.beneficiaryInfoExists(id);
   }
 }

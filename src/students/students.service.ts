@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { AddStudentDto } from './student.dto';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { UsersService } from '../users/users.service';
-import { statusesTypes, userRoles } from '../users/user.interface';
+import { statuses, statusesTypes, userRoles } from '../users/user.interface';
 import { SchoolsService } from '../schools/schools.service';
 
 @Injectable()
@@ -25,11 +25,13 @@ export class StudentsService {
     const skip = (page - 1) * 10;
     const queryBuilder = this.studentsRepository.createQueryBuilder('student');
 
+    queryBuilder.innerJoinAndSelect('student.school', 'school');
+
     if (searchTerm) {
       queryBuilder.where('LOWER(student.name) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
       });
-      queryBuilder.orWhere('LOWER(student.school) LIKE LOWER(:searchTerm)', {
+      queryBuilder.orWhere('LOWER(school.name) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
       });
     }
@@ -58,7 +60,7 @@ export class StudentsService {
 
   async addStudent(addStudentDto: AddStudentDto): Promise<IResponse<Student>> {
     const student = new Student();
-    this.setStudent(student, addStudentDto);
+    await this.setStudent(student, addStudentDto);
     await this.studentsRepository.save(student);
 
     return {
@@ -133,7 +135,7 @@ export class StudentsService {
     id: string,
   ): Promise<IResponse<Student>> {
     const user = await this.userService.findOne(id);
-    const student = await this.studentsRepository.findOneByOrFail({
+    const student = await this.studentsRepository.findOneBy({
       user: {
         id: user.id,
       },
@@ -141,6 +143,49 @@ export class StudentsService {
 
     return {
       message: 'Student loaded successfully',
+      data: student,
+    };
+  }
+
+  public async deleteStudent(id: string) {
+    const student = await this.studentsRepository.findOneByOrFail({ id });
+    const userId = await student.user?.id;
+    if (userId) {
+      const user = await this.userService.findOne(userId);
+      await this.userService.deactivate(user);
+    }
+    await this.studentsRepository.remove(student);
+
+    return {
+      message: 'Student deleted successfully',
+      data: student,
+    };
+  }
+
+  public async deactivateStudent(id: string) {
+    const student = await this.studentsRepository.findOneByOrFail({ id });
+    student.status = statuses[1];
+    const userId = await student.user?.id;
+    if (userId) {
+      const user = await this.userService.findOne(userId);
+      await this.userService.deactivate(user);
+    }
+    await this.studentsRepository.save(student);
+
+    return {
+      message: 'Student deactivated successfully',
+      data: student,
+    };
+  }
+
+  public async activateStudent(id: string) {
+    const student = await this.studentsRepository.findOneByOrFail({ id });
+    student.status = statuses[0];
+
+    await this.studentsRepository.save(student);
+
+    return {
+      message: 'Student deactivated successfully',
       data: student,
     };
   }
@@ -177,11 +222,25 @@ export class StudentsService {
   }
 
   public async findStudentByUserId(id: string) {
-    const user = await this.userService.findOne(id);
+    const user = await this.userService.findOneOrFail(id);
     return await this.studentsRepository.findOneByOrFail({
       user: {
         id: user.id,
       },
     });
+  }
+
+  public async beneficiaryInfoExists(id: string): Promise<IResponse<boolean>> {
+    const user = await this.userService.findOneOrFail(id);
+    const student = await this.studentsRepository.findOneBy({
+      user: {
+        id: user.id,
+      },
+    });
+
+    return {
+      message: 'Check completed successfully',
+      data: !!student,
+    };
   }
 }
