@@ -49,7 +49,7 @@ export class FinanceService {
       await this.budgetRepository.save(activeBudget);
     }
     const budget = new Budget();
-    await this.setBudget(createBudgetDto, budget);
+    await this.setBudget(createBudgetDto, budget, 'create');
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget saved successfully',
@@ -59,9 +59,16 @@ export class FinanceService {
 
   async getBudgets(
     page: number = 1,
+    status: string,
   ): Promise<IResponse<IPagination<Budget[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.budgetRepository.createQueryBuilder('budget');
+
+    if (status) {
+      queryBuilder.andWhere('budget.status = :status', {
+        status,
+      });
+    }
 
     const [budgets, total] = await queryBuilder
       .skip(skip)
@@ -93,7 +100,7 @@ export class FinanceService {
     createBudgetDto: CreateBudgetDto,
   ): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
-    await this.setBudget(createBudgetDto, budget);
+    await this.setBudget(createBudgetDto, budget, 'edit');
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget edit successfully',
@@ -110,7 +117,11 @@ export class FinanceService {
     };
   }
 
-  private async setBudget(createBudgetDto: CreateBudgetDto, budget: Budget) {
+  private async setBudget(
+    createBudgetDto: CreateBudgetDto,
+    budget: Budget,
+    type: 'create' | 'edit',
+  ) {
     const budgetDistributions = await Promise.all(
       createBudgetDto.distributions.map(async (distribution) => {
         const newDistribution = new BudgetDistribution();
@@ -123,8 +134,10 @@ export class FinanceService {
     budget.totalDistribution =
       this.getBudgetDistributionTotal(budgetDistributions);
     budget.total = createBudgetDto.total;
-    budget.utilized = 0;
-    budget.surplus = createBudgetDto.total;
+    if (type === 'create') {
+      budget.utilized = 0;
+      budget.surplus = createBudgetDto.total;
+    }
     budget.startDate = createBudgetDto.startDate;
     budget.endDate = createBudgetDto.endDate;
   }
@@ -133,7 +146,8 @@ export class FinanceService {
     budgetDistributions: BudgetDistribution[],
   ): number {
     return budgetDistributions.reduce(
-      (total, budgetDistribution) => total + budgetDistribution.amount,
+      (total, budgetDistribution) =>
+        total + parseFloat(String(budgetDistribution.amount)),
       0,
     );
   }
