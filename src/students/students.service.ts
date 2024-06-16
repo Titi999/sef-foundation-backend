@@ -243,4 +243,15 @@ export class StudentsService {
       data: !!student,
     };
   }
+
+  public async findUser(studentId: string) {
+    const student = await this.studentsRepository.findOne({
+      where: {
+        id: studentId,
+      },
+      relations: ['user'],
+    });
+
+    return student.user;
+  }
 }

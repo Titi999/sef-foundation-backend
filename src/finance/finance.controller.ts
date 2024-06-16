@@ -91,8 +91,10 @@ export class FinanceController {
   @Get('disbursements')
   async getDisbursements(
     @Query('page') page: number,
+    @Query('search') search: string,
+    @Query('status') status: string,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
-    return this.financeService.getDisbursements(page);
+    return this.financeService.getDisbursements(page, status, search);
   }
 
   @UsePipes(new ValidationPipe())
@@ -113,6 +115,19 @@ export class FinanceController {
     @Body() createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
     return await this.financeService.createDisbursement(createDisbursementDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Patch('disbursement/:id')
+  async editDisbursement(
+    @Param('id') id: string,
+    @Body() createDisbursementDto: CreateDisbursementDto,
+  ): Promise<IResponse<Disbursement>> {
+    return await this.financeService.editDisbursement(
+      id,
+      createDisbursementDto,
+    );
   }
 
   @UsePipes(new ValidationPipe())

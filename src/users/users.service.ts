@@ -245,4 +245,8 @@ export class UsersService {
     user.status = statuses[1];
     await this.userRepository.save(user);
   }
+
+  public async findUserByStudentId(id: string) {
+    const user = await this.userRepository.findOneBy({});
+  }
 }

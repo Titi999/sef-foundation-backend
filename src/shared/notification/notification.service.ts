@@ -57,4 +57,36 @@ export class NotificationService {
       },
     });
   }
+
+  async sendApproveDisbursementEmail(
+    to: string,
+    name: string,
+    amount: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sef.com',
+      subject: 'Disbursement Request Approved',
+      template: './approveDisbursement',
+      context: {
+        name,
+        amount,
+      },
+    });
+  }
+
+  async sendDeclineDisbursementEmail(
+    to: string,
+    name: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sef.com',
+      subject: 'Disbursement Request Declined',
+      template: './declineDisbursement',
+      context: {
+        name,
+      },
+    });
+  }
 }
