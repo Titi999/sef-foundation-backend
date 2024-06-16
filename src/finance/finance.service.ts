@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateBudgetDto } from './dto/budget.dto';
 import { BudgetDistribution } from './entities/budgetDistribution.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,6 +23,7 @@ import {
   statuses,
 } from '../users/user.interface';
 import { monthNames } from '../utility/constants';
+import { NotificationService } from '../shared/notification/notification.service';
 
 @Injectable()
 export class FinanceService {
@@ -36,6 +37,7 @@ export class FinanceService {
     @InjectRepository(DisbursementDistribution)
     private readonly disbursementDistributionRepository: Repository<DisbursementDistribution>,
     private readonly studentsService: StudentsService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createBudget(
@@ -49,7 +51,7 @@ export class FinanceService {
       await this.budgetRepository.save(activeBudget);
     }
     const budget = new Budget();
-    await this.setBudget(createBudgetDto, budget);
+    await this.setBudget(createBudgetDto, budget, 'create');
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget saved successfully',
@@ -59,9 +61,16 @@ export class FinanceService {
 
   async getBudgets(
     page: number = 1,
+    status: string,
   ): Promise<IResponse<IPagination<Budget[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.budgetRepository.createQueryBuilder('budget');
+
+    if (status) {
+      queryBuilder.andWhere('budget.status = :status', {
+        status,
+      });
+    }
 
     const [budgets, total] = await queryBuilder
       .skip(skip)
@@ -93,7 +102,7 @@ export class FinanceService {
     createBudgetDto: CreateBudgetDto,
   ): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
-    await this.setBudget(createBudgetDto, budget);
+    await this.setBudget(createBudgetDto, budget, 'edit');
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget edit successfully',
@@ -103,6 +112,16 @@ export class FinanceService {
 
   async deleteBudget(id: string): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
+    const disbursement = await this.disbursementRepository.findOneBy({
+      budget: {
+        id: id,
+      },
+    });
+    if (disbursement) {
+      throw new ConflictException({
+        message: 'Budget with disbursement cannot be deleted',
+      });
+    }
     await this.budgetRepository.remove(budget);
     return {
       message: 'Budget deleted successfully',
@@ -110,7 +129,11 @@ export class FinanceService {
     };
   }
 
-  private async setBudget(createBudgetDto: CreateBudgetDto, budget: Budget) {
+  private async setBudget(
+    createBudgetDto: CreateBudgetDto,
+    budget: Budget,
+    type: 'create' | 'edit',
+  ) {
     const budgetDistributions = await Promise.all(
       createBudgetDto.distributions.map(async (distribution) => {
         const newDistribution = new BudgetDistribution();
@@ -123,8 +146,10 @@ export class FinanceService {
     budget.totalDistribution =
       this.getBudgetDistributionTotal(budgetDistributions);
     budget.total = createBudgetDto.total;
-    budget.utilized = 0;
-    budget.surplus = createBudgetDto.total;
+    if (type === 'create') {
+      budget.utilized = 0;
+      budget.surplus = createBudgetDto.total;
+    }
     budget.startDate = createBudgetDto.startDate;
     budget.endDate = createBudgetDto.endDate;
   }
@@ -133,14 +158,18 @@ export class FinanceService {
     budgetDistributions: BudgetDistribution[],
   ): number {
     return budgetDistributions.reduce(
-      (total, budgetDistribution) => total + budgetDistribution.amount,
+      (total, budgetDistribution) =>
+        total + parseFloat(String(budgetDistribution.amount)),
       0,
     );
   }
 
   public async getDisbursement(id: string): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id,
+    const disbursement = await this.disbursementRepository.findOneOrFail({
+      where: {
+        id,
+      },
+      relations: ['student'],
     });
 
     return {
@@ -151,11 +180,25 @@ export class FinanceService {
 
   async getDisbursements(
     page: number = 1,
+    status: string,
+    search: string,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder =
       this.disbursementRepository.createQueryBuilder('disbursement');
     queryBuilder.innerJoinAndSelect('disbursement.student', 'student');
+    queryBuilder.innerJoinAndSelect('student.school', 'school');
+    if (status) {
+      queryBuilder.andWhere('disbursement.status = :status', {
+        status,
+      });
+    }
+
+    if (search) {
+      queryBuilder.andWhere('LOWER(student.name) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+    }
     const [disbursements, total] = await queryBuilder
       .skip(skip)
       .take(10)
@@ -237,6 +280,41 @@ export class FinanceService {
     };
   }
 
+  async editDisbursement(
+    id: string,
+    createDisbursementDto: CreateDisbursementDto,
+  ): Promise<IResponse<Disbursement>> {
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id,
+    });
+    const budget = await this.budgetRepository.findOneByOrFail({
+      status: statuses[0],
+    });
+    const student = await this.studentsService.getStudentById(
+      createDisbursementDto.studentId,
+    );
+    disbursement.amount = createDisbursementDto.amount;
+    disbursement.budget = budget;
+    disbursement.student = student;
+    disbursement.disbursementDistribution = await Promise.all(
+      createDisbursementDto.disbursementDistribution.map(
+        async (distribution) => {
+          const newDistribution = new DisbursementDistribution();
+          newDistribution.amount = distribution.amount;
+          newDistribution.title = distribution.title;
+          return this.disbursementDistributionRepository.save(newDistribution);
+        },
+      ),
+    );
+
+    await this.disbursementRepository.save(disbursement);
+
+    return {
+      message: 'You have successfully edited a disbursement',
+      data: disbursement,
+    };
+  }
+
   public async createBeneficiaryDisbursement(
     id: string,
     createBeneficiaryDisbursementDto: CreateBeneficiaryDisbursemenDto,
@@ -267,6 +345,16 @@ export class FinanceService {
     await this.budgetRepository.save(budget);
     await this.disbursementRepository.save(disbursement);
 
+    await this.disbursementRepository.save(disbursement);
+    const student = await disbursement.student;
+    const user = await this.studentsService.findUser(student.id);
+    if (user)
+      await this.notificationService.sendApproveDisbursementEmail(
+        user.email,
+        user.name,
+        disbursement.amount.toString(),
+      );
+
     return {
       message: 'Disbursement approved successfully',
       data: disbursement,
@@ -276,11 +364,18 @@ export class FinanceService {
   public async declineDisbursement(
     id: string,
   ): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id,
+    const disbursement = await this.disbursementRepository.findOneOrFail({
+      where: { id },
     });
     disbursement.status = 'declined';
     await this.disbursementRepository.save(disbursement);
+    const student = await disbursement.student;
+    const user = await this.studentsService.findUser(student.id);
+    if (user)
+      await this.notificationService.sendDeclineDisbursementEmail(
+        user.email,
+        user.name,
+      );
 
     return {
       message: 'Disbursement declined successfully',

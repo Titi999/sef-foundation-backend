@@ -46,8 +46,9 @@ export class FinanceController {
   @Get('budgets')
   async getBudgets(
     @Query('page') page: number,
+    @Query('status') status: string,
   ): Promise<IResponse<IPagination<Budget[]>>> {
-    return this.financeService.getBudgets(page);
+    return this.financeService.getBudgets(page, status);
   }
 
   @UsePipes(new ValidationPipe())
@@ -61,7 +62,7 @@ export class FinanceController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
-  @Patch('budget')
+  @Patch('budget/:id')
   async editBudget(
     @Param('id') id: string,
     @Body() createBudgetDto: CreateBudgetDto,
@@ -71,7 +72,7 @@ export class FinanceController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
-  @Delete('budget')
+  @Delete('budget/:id')
   async deleteBudget(@Param('id') id: string): Promise<IResponse<Budget>> {
     return this.financeService.deleteBudget(id);
   }
@@ -90,8 +91,10 @@ export class FinanceController {
   @Get('disbursements')
   async getDisbursements(
     @Query('page') page: number,
+    @Query('search') search: string,
+    @Query('status') status: string,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
-    return this.financeService.getDisbursements(page);
+    return this.financeService.getDisbursements(page, status, search);
   }
 
   @UsePipes(new ValidationPipe())
@@ -112,6 +115,19 @@ export class FinanceController {
     @Body() createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
     return await this.financeService.createDisbursement(createDisbursementDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Patch('disbursement/:id')
+  async editDisbursement(
+    @Param('id') id: string,
+    @Body() createDisbursementDto: CreateDisbursementDto,
+  ): Promise<IResponse<Disbursement>> {
+    return await this.financeService.editDisbursement(
+      id,
+      createDisbursementDto,
+    );
   }
 
   @UsePipes(new ValidationPipe())
