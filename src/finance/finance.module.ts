@@ -13,6 +13,9 @@ import { User } from '../users/entities/user.entity';
 import { NotificationService } from '../shared/notification/notification.service';
 import { SchoolsService } from '../schools/schools.service';
 import { School } from '../schools/school.entity';
+import { AuthenticationService } from '../authentication/authentication.service';
+import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenIdsStorage } from '../authentication/refresh-token-ids-storage';
 
 @Module({
   imports: [
@@ -32,6 +35,7 @@ import { School } from '../schools/school.entity';
     UsersService,
     NotificationService,
     SchoolsService,
+    JwtService,
   ],
   controllers: [FinanceController],
 })

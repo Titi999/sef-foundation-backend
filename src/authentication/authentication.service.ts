@@ -276,4 +276,8 @@ export class AuthenticationService {
       throw new UnauthorizedException('Invalid access token');
     }
   }
+
+  decodeToken(token: string) {
+    return this.jwtService.verifyAsync(token);
+  }
 }
