@@ -110,6 +110,34 @@ export class FinanceService {
     };
   }
 
+  public async deleteDisbursementByBeneficiary(
+    userId: string,
+    requestId: string,
+  ): Promise<IResponse<Disbursement>> {
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id: requestId,
+      student: {
+        user: {
+          id: userId,
+        },
+      },
+    });
+    const disbursementDistributions =
+      await this.disbursementDistributionRepository.findBy({
+        disbursement: {
+          id: disbursement.id,
+        },
+      });
+    for (const distribution of disbursementDistributions) {
+      await this.disbursementDistributionRepository.remove(distribution);
+    }
+    await this.disbursementRepository.remove(disbursement);
+    return {
+      message: 'Disbursement request deleted successfully',
+      data: disbursement,
+    };
+  }
+
   async deleteBudget(id: string): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
     const disbursement = await this.disbursementRepository.findOneBy({
@@ -325,6 +353,47 @@ export class FinanceService {
       ...createBeneficiaryDisbursementDto,
     };
     return await this.createDisbursement(createDisbursementDto);
+  }
+
+  public async editBeneficiaryDisbursement(
+    disbursementId: string,
+    userId: string,
+    createBeneficiaryDisbursementDto: CreateBeneficiaryDisbursemenDto,
+  ): Promise<IResponse<Disbursement>> {
+    const studentId = (await this.studentsService.findStudentByUserId(userId))
+      .id;
+    const disbursement = await this.disbursementRepository.findOneByOrFail({
+      id: disbursementId,
+      student: {
+        id: studentId,
+      },
+      status: disbursementStatuses[0],
+    });
+    const disbursementDistributions =
+      await this.disbursementDistributionRepository.findBy({
+        disbursement: {
+          id: disbursement.id,
+        },
+      });
+    disbursement.amount = createBeneficiaryDisbursementDto.amount;
+    disbursement.disbursementDistribution = await Promise.all(
+      createBeneficiaryDisbursementDto.disbursementDistribution.map(
+        async (distribution) => {
+          const newDistribution = new DisbursementDistribution();
+          newDistribution.amount = distribution.amount;
+          newDistribution.title = distribution.title;
+          return this.disbursementDistributionRepository.save(newDistribution);
+        },
+      ),
+    );
+    await this.disbursementRepository.save(disbursement);
+    for (const distribution of disbursementDistributions) {
+      await this.disbursementDistributionRepository.remove(distribution);
+    }
+    return {
+      message: 'Disbursement edited successfully',
+      data: disbursement,
+    };
   }
 
   public async approveDisbursement(

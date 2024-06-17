@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Headers,
   Post,
   Query,
   UseGuards,
@@ -28,11 +29,16 @@ import {
   CreateDisbursementDto,
 } from './dto/disbursement.dto';
 import { disbursementStatusesType } from '../users/user.interface';
+import { JwtService } from '@nestjs/jwt';
+import { IJwtPayload } from '../authentication/strategy/jwt.interface';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FinanceController {
-  constructor(private readonly financeService: FinanceService) {}
+  constructor(
+    private readonly financeService: FinanceService,
+    private jwtService: JwtService,
+  ) {}
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
@@ -78,7 +84,7 @@ export class FinanceController {
   }
 
   @UsePipes(new ValidationPipe())
-  @Roles(['super admin'])
+  @Roles(['super admin', 'beneficiary'])
   @Get('disbursement/:id')
   async getDisbursement(
     @Param('id') id: string,
@@ -132,6 +138,21 @@ export class FinanceController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['beneficiary'])
+  @Patch('request/:userId/:disbursementId')
+  async editBeneficiaryDisbursement(
+    @Param('userId') userId: string,
+    @Param('disbursementId') disbursementId: string,
+    @Body() createDisbursementDto: CreateBeneficiaryDisbursemenDto,
+  ): Promise<IResponse<Disbursement>> {
+    return await this.financeService.editBeneficiaryDisbursement(
+      disbursementId,
+      userId,
+      createDisbursementDto,
+    );
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
   @Post('disbursement/:id')
   async createBeneficiaryDisbursement(
     @Param('id') id: string,
@@ -159,6 +180,20 @@ export class FinanceController {
     @Param('id') id: string,
   ): Promise<IResponse<Disbursement>> {
     return this.financeService.declineDisbursement(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['beneficiary'])
+  @Delete('disbursement/:id')
+  async deleteDisbursementByBeneficiary(
+    @Param('id') id: string,
+    @Headers('authorization') authorizationHeader: any,
+  ): Promise<IResponse<Disbursement>> {
+    const token = authorizationHeader.split(' ')[1];
+    const decoded = (await this.jwtService.verifyAsync(token, {
+      secret: process.env.JWT_SECRET,
+    })) as IJwtPayload;
+    return this.financeService.deleteDisbursementByBeneficiary(decoded.sub, id);
   }
 
   @UsePipes(new ValidationPipe())

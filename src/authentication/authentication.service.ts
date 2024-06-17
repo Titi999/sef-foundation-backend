@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Global,
   GoneException,
   Injectable,
   Logger,
@@ -275,5 +276,9 @@ export class AuthenticationService {
     } catch (error) {
       throw new UnauthorizedException('Invalid access token');
     }
+  }
+
+  decodeToken(token: string) {
+    return this.jwtService.verifyAsync(token);
   }
 }
