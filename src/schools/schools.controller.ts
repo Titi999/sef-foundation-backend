@@ -44,7 +44,7 @@ export class SchoolsController {
   }
 
   @Roles(['super admin', 'admin'])
-  @Patch('')
+  @Patch(':id')
   async updateSchool(
     @Param('id') id: string,
     @Body() createSchoolDto: CreateSchoolDto,
@@ -53,7 +53,7 @@ export class SchoolsController {
   }
 
   @Roles(['super admin', 'admin'])
-  @Delete('')
+  @Delete(':id')
   async deleteSchool(@Param('id') id: string): Promise<IResponse<School>> {
     return this.schoolsService.deleteSchool(id);
   }
