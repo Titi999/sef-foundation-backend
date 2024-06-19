@@ -7,7 +7,6 @@ import {
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { statuses } from '../users/user.interface';
-import { DisbursementDistribution } from '../finance/entities/disbursementDistribution.entity';
 import { Student } from '../students/student.entity';
 
 @Entity({ name: 'schools' })
@@ -31,6 +30,12 @@ export class School {
 
   @Column({ nullable: true })
   location: string;
+
+  @Column('text', {
+    array: true,
+    default: ['Level 100', 'Level 200', 'Level 300', 'Level 400'],
+  })
+  classes: string[];
 
   @OneToMany(() => Student, (student) => student.school, {
     lazy: true,
