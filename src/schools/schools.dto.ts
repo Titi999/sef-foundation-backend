@@ -12,4 +12,7 @@ export class CreateSchoolDto {
 
   @IsOptional()
   location: string;
+
+  @IsNotEmpty()
+  classes: string[];
 }

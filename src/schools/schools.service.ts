@@ -35,6 +35,7 @@ export class SchoolsService {
     school.name = createSchoolDto.name;
     school.phone = createSchoolDto.phone;
     school.location = createSchoolDto.location;
+    school.classes = createSchoolDto.classes;
   }
 
   async getSchools(
