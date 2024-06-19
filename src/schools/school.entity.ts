@@ -33,7 +33,6 @@ export class School {
 
   @Column('text', {
     array: true,
-    default: ['Level 100', 'Level 200', 'Level 300', 'Level 400'],
   })
   classes: string[];
 
