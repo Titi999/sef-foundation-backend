@@ -57,4 +57,16 @@ export class SchoolsController {
   async deleteSchool(@Param('id') id: string): Promise<IResponse<School>> {
     return this.schoolsService.deleteSchool(id);
   }
+
+  @Roles(['super admin', 'admin'])
+  @Patch('activate/:id')
+  async activateSchool(@Param('id') id: string): Promise<IResponse<School>> {
+    return this.schoolsService.activateSchool(id);
+  }
+
+  @Roles(['super admin', 'admin'])
+  @Patch('deactivate/:id')
+  async deactivateSchool(@Param('id') id: string): Promise<IResponse<School>> {
+    return this.schoolsService.deactivateSchool(id);
+  }
 }
