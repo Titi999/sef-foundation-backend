@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { School } from './school.entity';
 import { Repository } from 'typeorm';
@@ -36,7 +40,7 @@ export class SchoolsService {
   async getSchools(
     page: number = 1,
     searchTerm: string = '',
-    status: statusesTypes = statuses[0],
+    status: statusesTypes,
   ): Promise<IResponse<IPagination<School[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.schoolRepository.createQueryBuilder('school');
@@ -48,7 +52,7 @@ export class SchoolsService {
     }
 
     if (status) {
-      queryBuilder.where('LOWER(school.status) = LOWER(:status)', {
+      queryBuilder.andWhere('LOWER(school.status) = LOWER(:status)', {
         status,
       });
     }
@@ -85,12 +89,21 @@ export class SchoolsService {
 
   public async deleteSchool(id: string): Promise<IResponse<School>> {
     const school = await this.findSchoolById(id);
-    await this.schoolRepository.remove(school);
+    try {
+      await this.schoolRepository.remove(school);
+      return {
+        message: 'School successfully deleted',
+        data: school,
+      };
+    } catch (error) {
+      if (error.driverError.code === '23503') {
+        throw new ConflictException(
+          'This school cannot be deleted as it has relations with students',
+        );
+      }
 
-    return {
-      message: 'School successfully deleted',
-      data: school,
-    };
+      throw new InternalServerErrorException();
+    }
   }
 
   public findSchoolById(id: string): Promise<School> {
@@ -98,9 +111,31 @@ export class SchoolsService {
   }
 
   public async getAllSchools(): Promise<IResponse<School[]>> {
-    const school = await this.schoolRepository.find();
+    const school = await this.schoolRepository.findBy({
+      status: statuses[0],
+    });
     return {
       message: 'Schools loaded successfully',
+      data: school,
+    };
+  }
+
+  public async activateSchool(id: string): Promise<IResponse<School>> {
+    const school = await this.schoolRepository.findOneByOrFail({ id });
+    school.status = statuses[0];
+    await this.schoolRepository.save(school);
+    return {
+      message: 'Schools activated successfully',
+      data: school,
+    };
+  }
+
+  public async deactivateSchool(id: string): Promise<IResponse<School>> {
+    const school = await this.schoolRepository.findOneByOrFail({ id });
+    school.status = statuses[1];
+    await this.schoolRepository.save(school);
+    return {
+      message: 'Schools deactivated successfully',
       data: school,
     };
   }
