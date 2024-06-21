@@ -17,6 +17,12 @@ export class AddStudentDto {
   @IsOptional()
   description: string;
 
+  @IsOptional()
+  grandParent: string;
+
+  @IsOptional()
+  greatGrandparent: string;
+
   @IsNotEmpty()
   phone: string;
 
