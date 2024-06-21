@@ -221,9 +221,9 @@ export class UsersService {
       );
     }
     const salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(changePasswordDto.password, salt);
+    user.password = await bcrypt.hash(changePasswordDto.newPassword, salt);
     await this.userRepository.save(user);
-
+    delete user.password;
     return {
       message: 'User password change successfully',
       data: user,
