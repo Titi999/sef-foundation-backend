@@ -165,6 +165,7 @@ export class StudentsService {
   public async deactivateStudent(id: string) {
     const student = await this.studentsRepository.findOneByOrFail({ id });
     student.status = statuses[1];
+    student.deactivated_at = new Date();
     const userId = await student.user?.id;
     if (userId) {
       const user = await this.userService.findOne(userId);

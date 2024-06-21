@@ -51,6 +51,12 @@ export class User {
   @Column({ default: true })
   firstLogin: boolean;
 
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+  })
+  deactivated_at: Date;
+
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',

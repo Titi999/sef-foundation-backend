@@ -65,6 +65,12 @@ export class Student {
   @Column({ nullable: true, enum: [statuses], default: 'active' })
   status: string;
 
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+  })
+  deactivated_at: Date;
+
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
