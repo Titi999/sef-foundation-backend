@@ -182,6 +182,9 @@ export class UsersService {
     const user = await this.userRepository.findOneByOrFail({
       id,
     });
+    if (user.status === statuses[0]) {
+      user.deactivated_at = new Date();
+    }
 
     user.status = user.status === 'active' ? 'inactive' : 'active';
     const userResponse = await this.userRepository.save(user);
@@ -243,10 +246,7 @@ export class UsersService {
 
   public async deactivate(user: User): Promise<void> {
     user.status = statuses[1];
+    user.deactivated_at = new Date();
     await this.userRepository.save(user);
-  }
-
-  public async findUserByStudentId(id: string) {
-    const user = await this.userRepository.findOneBy({});
   }
 }
