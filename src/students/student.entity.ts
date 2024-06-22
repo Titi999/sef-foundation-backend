@@ -40,6 +40,12 @@ export class Student {
   parent: string;
 
   @Column({ nullable: true })
+  grandParent: string;
+
+  @Column({ nullable: true })
+  greatGrandparent: string;
+
+  @Column({ nullable: true })
   parentPhone: string;
 
   @ManyToOne(() => School, { eager: true })

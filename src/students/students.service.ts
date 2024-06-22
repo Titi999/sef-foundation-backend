@@ -76,7 +76,7 @@ export class StudentsService {
     const student = await this.studentsRepository.findOneBy({
       id,
     });
-    this.setStudent(student, addStudentDto);
+    await this.setStudent(student, addStudentDto);
     await this.studentsRepository.save(student);
 
     return {
@@ -95,7 +95,7 @@ export class StudentsService {
         id: user.id,
       },
     });
-    this.setStudent(student, addStudentDto);
+    await this.setStudent(student, addStudentDto);
     await this.studentsRepository.save(student);
 
     return {
@@ -110,7 +110,7 @@ export class StudentsService {
   ): Promise<IResponse<Student>> {
     const user = await this.userService.findUserByRole(id, userRoles[2]);
     const student = new Student();
-    this.setStudent(student, addStudentDto);
+    await this.setStudent(student, addStudentDto);
     student.user = user;
     await this.studentsRepository.save(student);
 
@@ -197,6 +197,8 @@ export class StudentsService {
     student.description = addStudentDto.description;
     student.parent = addStudentDto.parent;
     student.phone = addStudentDto.phone;
+    student.greatGrandparent = addStudentDto.greatGrandparent;
+    student.grandParent = addStudentDto.grandParent;
     student.school = await this.schoolsService.findSchoolById(
       addStudentDto.school,
     );
