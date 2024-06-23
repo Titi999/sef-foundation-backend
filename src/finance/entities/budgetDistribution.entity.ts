@@ -26,6 +26,12 @@ export class BudgetDistribution {
   @Column()
   amount: number;
 
+  @Column({ nullable: true })
+  comments: string;
+
+  @Column({ default: false })
+  boardingHouse: boolean;
+
   @ManyToOne(() => Budget, { lazy: true, nullable: true })
   @JoinColumn({ name: 'budgetId' })
   budget: Budget;

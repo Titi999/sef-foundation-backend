@@ -167,6 +167,8 @@ export class FinanceService {
         const newDistribution = new BudgetDistribution();
         newDistribution.amount = distribution.amount;
         newDistribution.title = distribution.title;
+        newDistribution.comments = distribution.comments;
+        newDistribution.boardingHouse = distribution.boardingHouse;
         return this.budgetDistributionRepository.save(newDistribution);
       }),
     );
@@ -295,6 +297,7 @@ export class FinanceService {
           const newDistribution = new DisbursementDistribution();
           newDistribution.amount = distribution.amount;
           newDistribution.title = distribution.title;
+          newDistribution.comments = distribution.comments;
           return this.disbursementDistributionRepository.save(newDistribution);
         },
       ),

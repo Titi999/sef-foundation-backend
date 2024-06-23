@@ -1,4 +1,4 @@
-import { IsNumber, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateBudgetDto {
   @IsNumber()
@@ -21,4 +21,11 @@ export class CreateBudgetDistributionDto {
   @IsNotEmpty()
   @IsNumber()
   amount: number;
+
+  @IsNotEmpty()
+  @IsBoolean()
+  boardingHouse: boolean;
+
+  @IsOptional()
+  comments: string;
 }
