@@ -43,6 +43,13 @@ export class FinanceController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
+  @Get('budgets/all')
+  async getAllBudgets(): Promise<IResponse<Budget[]>> {
+    return this.financeService.getAllBudgets();
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
   @Get('budgets/:id')
   async getBudget(@Param('id') id: string): Promise<IResponse<Budget>> {
     return this.financeService.getBudget(id);
@@ -209,7 +216,9 @@ export class FinanceController {
   @UsePipes(new ValidationPipe())
   @Roles(['super admin', 'admin'])
   @Get('report')
-  async getFinancialReport(): Promise<IResponse<FinanceReportInterface[]>> {
-    return this.financeService.getFinancialReport();
+  async getFinancialReport(
+    @Query('budget') budget: string,
+  ): Promise<IResponse<FinanceReportInterface[]>> {
+    return this.financeService.getFinancialReport(budget);
   }
 }

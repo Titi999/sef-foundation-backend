@@ -60,6 +60,15 @@ export class FinanceService {
     };
   }
 
+  async getAllBudgets(): Promise<IResponse<Budget[]>> {
+    const budgets = await this.budgetRepository.find();
+
+    return {
+      message: 'You have successfully loaded all budgets',
+      data: budgets,
+    };
+  }
+
   async getBudgets(
     page: number = 1,
     status: string,
@@ -471,23 +480,43 @@ export class FinanceService {
     };
   }
 
-  public async getFinancialReport(): Promise<
-    IResponse<FinanceReportInterface[]>
-  > {
-    const budgetDistributions = await this.budgetDistributionRepository
+  public async getFinancialReport(
+    budgetId: string,
+  ): Promise<IResponse<FinanceReportInterface[]>> {
+    const budgetDistributionsQuery = this.budgetDistributionRepository
       .createQueryBuilder('bd')
       .select('bd.title', 'title')
       .addSelect('SUM(bd.amount)', 'budgetDistributionAmount')
-      .groupBy('bd.title')
-      .getRawMany();
+      .groupBy('bd.title');
 
-    const disbursementDistributions =
-      await this.disbursementDistributionRepository
+    const disbursementDistributionsQuery =
+      this.disbursementDistributionRepository
         .createQueryBuilder('dd')
         .select('dd.title', 'title')
         .addSelect('SUM(dd.amount)', 'disbursementDistributionAmount')
-        .groupBy('dd.title')
-        .getRawMany();
+        .innerJoin('dd.disbursement', 'disbursement')
+        .where('disbursement.status = :status', {
+          status: disbursementStatuses[1],
+        })
+        .groupBy('dd.title');
+
+    if (budgetId) {
+      budgetDistributionsQuery
+        .innerJoin('bd.budget', 'budget')
+        .where('budget.id = :budgetId', {
+          budgetId,
+        });
+
+      disbursementDistributionsQuery
+        .innerJoin('disbursement.budget', 'budget')
+        .where('budget.id = :budgetId', {
+          budgetId,
+        });
+    }
+
+    const budgetDistributions = await budgetDistributionsQuery.getRawMany();
+    const disbursementDistributions =
+      await disbursementDistributionsQuery.getRawMany();
 
     const combined: FinanceReportInterface[] = budgetDistributions.map((bd) => {
       const dd = disbursementDistributions.find((dd) => dd.title === bd.title);
