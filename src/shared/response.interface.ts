@@ -18,6 +18,12 @@ export interface IOverviewStatistics {
   studentsSupported: number;
 }
 
+export interface FinanceReportInterface {
+  title: string;
+  budgetDistributionAmount: number;
+  disbursementDistributionAmount: number;
+}
+
 export interface IMonthTotal {
   month: string;
   total: number;

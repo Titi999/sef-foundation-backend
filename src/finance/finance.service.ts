@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Budget } from './entities/budget.entity';
 import {
+  FinanceReportInterface,
   IMonthTotal,
   IOverviewStatistics,
   IPagination,
@@ -467,6 +468,53 @@ export class FinanceService {
         fundsDisbursed: await this.getFundsDisbursed(year),
         studentsSupported: await this.studentsService.getAllStudentsCount(),
       },
+    };
+  }
+
+  public async getFinancialReport(): Promise<
+    IResponse<FinanceReportInterface[]>
+  > {
+    const budgetDistributions = await this.budgetDistributionRepository
+      .createQueryBuilder('bd')
+      .select('bd.title', 'title')
+      .addSelect('SUM(bd.amount)', 'budgetDistributionAmount')
+      .groupBy('bd.title')
+      .getRawMany();
+
+    const disbursementDistributions =
+      await this.disbursementDistributionRepository
+        .createQueryBuilder('dd')
+        .select('dd.title', 'title')
+        .addSelect('SUM(dd.amount)', 'disbursementDistributionAmount')
+        .groupBy('dd.title')
+        .getRawMany();
+
+    const combined: FinanceReportInterface[] = budgetDistributions.map((bd) => {
+      const dd = disbursementDistributions.find((dd) => dd.title === bd.title);
+      return {
+        title: bd.title,
+        budgetDistributionAmount: bd.budgetDistributionAmount,
+        disbursementDistributionAmount: dd
+          ? dd.disbursementDistributionAmount
+          : 0,
+      };
+    });
+
+    const remainingDisbursements = disbursementDistributions.filter(
+      (dd) => !budgetDistributions.find((bd) => bd.title === dd.title),
+    );
+
+    remainingDisbursements.forEach((dd) => {
+      combined.push({
+        title: dd.title,
+        budgetDistributionAmount: 0,
+        disbursementDistributionAmount: dd.disbursementDistributionAmount,
+      });
+    });
+
+    return {
+      message: 'Financial reports loaded successfully',
+      data: combined,
     };
   }
 
