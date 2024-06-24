@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { CreateBudgetDto } from './dto/budget.dto';
 import {
+  FinanceReportInterface,
   IOverviewStatistics,
   IPagination,
   IResponse,
@@ -203,5 +204,12 @@ export class FinanceController {
     @Query('year') year: number,
   ): Promise<IResponse<IOverviewStatistics>> {
     return this.financeService.getOverviewStats(year);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin', 'admin'])
+  @Get('report')
+  async getFinancialReport(): Promise<IResponse<FinanceReportInterface[]>> {
+    return this.financeService.getFinancialReport();
   }
 }
