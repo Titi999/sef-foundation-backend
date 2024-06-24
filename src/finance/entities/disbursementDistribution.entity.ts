@@ -30,6 +30,9 @@ export class DisbursementDistribution {
   @JoinColumn({ name: 'disbursementId' })
   disbursement: Disbursement;
 
+  @Column({ nullable: true })
+  comments: string;
+
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
