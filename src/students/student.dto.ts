@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional } from 'class-validator';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export class AddStudentDto {
@@ -28,6 +28,9 @@ export class AddStudentDto {
 
   @IsNotEmpty()
   parentPhone: string;
+
+  @IsBoolean()
+  boardingHouse: boolean;
 
   @CreateDateColumn({
     type: 'timestamp',

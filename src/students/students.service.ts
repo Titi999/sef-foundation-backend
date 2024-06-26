@@ -203,6 +203,7 @@ export class StudentsService {
       addStudentDto.school,
     );
     student.parentPhone = addStudentDto.parentPhone;
+    student.boardingHouse = addStudentDto.boardingHouse;
   }
 
   public async getStudentById(id: string) {
