@@ -10,12 +10,21 @@ export interface IPagination<T> {
   items: T;
 }
 
-export interface IOverviewStatistics {
+export interface IOverviewStatistics extends IOverviewStatisticsBase {
+  fundsAllocated: number;
+  studentsSupported: number;
+}
+
+export interface IBeneficiaryOverviewStatistics
+  extends IOverviewStatisticsBase {
+  fundsRequest: number;
+  fundsDeclined: number;
+}
+
+export interface IOverviewStatisticsBase {
   totalFundingDisbursed: IMonthTotal[];
   fundingDistribution: ITitleAmount[];
-  fundsAllocated: number;
   fundsDisbursed: number;
-  studentsSupported: number;
 }
 
 export interface FinanceReportInterface {
