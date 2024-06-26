@@ -518,6 +518,44 @@ export class FinanceService {
     };
   }
 
+  public async getDisbursementPerformance(): Promise<IResponse<unknown[]>> {
+    const query = await this.disbursementRepository
+      .createQueryBuilder('d')
+      .addSelect('SUM(d.amount)', 'totalDisbursement')
+      .innerJoin('d.student', 's')
+      .select('s.name', 'student')
+      .groupBy('s.id')
+      .getRawMany();
+
+    const results = query.map((row) => ({
+      student: row.student,
+      totalDisbursement: row.totalDisbursement,
+    }));
+
+    return {
+      message: 'Disbursement Performance Loaded Successfully',
+      data: results,
+    };
+  }
+
+  async getStudentWithHighestDisbursement() {
+    const subQuery = this.disbursementRepository
+      .createQueryBuilder('d')
+      .select('MAX(SUM(d.amount))', 'highestDisbursement')
+      .innerJoin('d.student', 's')
+      .groupBy('s.id')
+      .getQuery();
+
+    return await this.disbursementRepository
+      .createQueryBuilder('d')
+      .addSelect('SUM(d.amount)', 'totalDisbursement')
+      .innerJoin('d.student', 's')
+      .select('s.name', 'student')
+      .where('SUM(d.amount) = (' + subQuery + ')')
+      .groupBy('s.id')
+      .getRawOne();
+  }
+
   private async totalFundingDisbursedStats(
     year?: number,
   ): Promise<IMonthTotal[]> {

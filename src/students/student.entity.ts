@@ -32,6 +32,9 @@ export class Student {
   @JoinColumn({ name: 'userId' })
   user?: User | null;
 
+  @Column({ default: false })
+  boardingHouse: boolean;
+
   @Column()
   @Unique(['name'])
   name: string;
