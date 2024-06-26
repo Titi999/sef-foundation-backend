@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { Budget } from './entities/budget.entity';
 import {
   FinanceReportInterface,
+  IBeneficiaryOverviewStatistics,
   IMonthTotal,
   IOverviewStatistics,
   IPagination,
@@ -480,6 +481,22 @@ export class FinanceService {
     };
   }
 
+  public async getBeneficiaryOverviewStats(
+    id: string,
+    year: number,
+  ): Promise<IResponse<IBeneficiaryOverviewStatistics>> {
+    return {
+      message: 'You have successfully loaded statistics',
+      data: {
+        totalFundingDisbursed: await this.totalFundingDisbursedStats(year, id),
+        fundingDistribution: await this.getDisbursementDistributions(year, id),
+        fundsRequest: await this.getFundsRequested(year, id),
+        fundsDisbursed: await this.getFundsDisbursed(year, id),
+        fundsDeclined: await this.getFundsDeclined(year, id),
+      },
+    };
+  }
+
   public async getFinancialReport(
     budgetId: string,
   ): Promise<IResponse<FinanceReportInterface[]>> {
@@ -586,7 +603,8 @@ export class FinanceService {
   }
 
   private async totalFundingDisbursedStats(
-    year?: number,
+    year: number,
+    id?: string,
   ): Promise<IMonthTotal[]> {
     const queryBuilder = this.disbursementRepository
       .createQueryBuilder('disbursement')
@@ -599,10 +617,22 @@ export class FinanceService {
       status: disbursementStatuses[1],
     });
 
+    if (id) {
+      const student = await this.studentsService.findStudentByUserId(id);
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id: student.id,
+        });
+    }
+
     if (year) {
-      queryBuilder.where('EXTRACT(YEAR FROM disbursement.created_at) = :year', {
-        year,
-      });
+      queryBuilder.andWhere(
+        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
+        {
+          year,
+        },
+      );
     }
     const rawResults = await queryBuilder.getRawMany();
     return rawResults.map((result) => ({
@@ -632,6 +662,65 @@ export class FinanceService {
     }));
   }
 
+  private async getDisbursementDistributions(
+    year: number,
+    id?: string,
+  ): Promise<{ title: string; amount: number }[]> {
+    const queryBuilder = this.disbursementDistributionRepository
+      .createQueryBuilder('disbursementDistribution')
+      .innerJoin('disbursementDistribution.disbursement', 'disbursement')
+      .select([
+        'disbursementDistribution.title',
+        'disbursementDistribution.amount',
+      ])
+      .where('disbursement.status = :status', {
+        status: disbursementStatuses[1],
+      });
+
+    if (id) {
+      const student = await this.studentsService.findStudentByUserId(id);
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id: student.id,
+        });
+    }
+
+    if (year) {
+      queryBuilder.andWhere(
+        'EXTRACT(YEAR FROM disbursementDistribution.created_at) = :year',
+        { year },
+      );
+    }
+
+    const rawResults = await queryBuilder.getRawMany();
+
+    return this.combine(
+      rawResults.map((result) => ({
+        title: result.disbursementDistribution_title,
+        amount: parseFloat(result.disbursementDistribution_amount),
+      })),
+    );
+  }
+
+  private combine(expenses: { title: string; amount: number }[]) {
+    const expenseMap: { [key: string]: number } = {};
+
+    expenses.forEach((expense) => {
+      const normalizedTitle = expense.title.toLowerCase();
+      if (expenseMap[normalizedTitle]) {
+        expenseMap[normalizedTitle] += expense.amount;
+      } else {
+        expenseMap[normalizedTitle] = expense.amount;
+      }
+    });
+
+    return Object.keys(expenseMap).map((title) => ({
+      title: title.replace(/\b\w/g, (char) => char.toUpperCase()),
+      amount: expenseMap[title],
+    }));
+  }
+
   private async getFundsAllocated(year?: number): Promise<number> {
     const queryBuilder = this.budgetRepository
       .createQueryBuilder('budget')
@@ -647,7 +736,7 @@ export class FinanceService {
     return parseFloat(result.sum);
   }
 
-  private async getFundsDisbursed(year?: number): Promise<number> {
+  private async getFundsDisbursed(year: number, id?: string): Promise<number> {
     const queryBuilder = this.disbursementRepository
       .createQueryBuilder('disbursement')
       .select('SUM(disbursement.amount)', 'sum');
@@ -656,10 +745,80 @@ export class FinanceService {
       status: disbursementStatuses[1],
     });
 
+    if (id) {
+      const student = await this.studentsService.findStudentByUserId(id);
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id: student.id,
+        });
+    }
+
     if (year) {
-      queryBuilder.where('EXTRACT(YEAR FROM disbursement.created_at) = :year', {
-        year,
-      });
+      queryBuilder.andWhere(
+        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
+        {
+          year,
+        },
+      );
+    }
+
+    const result = await queryBuilder.getRawOne();
+    return parseFloat(result.sum);
+  }
+
+  private async getFundsRequested(year: number, id?: string): Promise<number> {
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .select('SUM(disbursement.amount)', 'sum');
+
+    if (id) {
+      const student = await this.studentsService.findStudentByUserId(id);
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id: student.id,
+        });
+    }
+
+    if (year) {
+      queryBuilder.andWhere(
+        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
+        {
+          year,
+        },
+      );
+    }
+
+    const result = await queryBuilder.getRawOne();
+    return parseFloat(result.sum);
+  }
+
+  private async getFundsDeclined(year: number, id?: string): Promise<number> {
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .select('SUM(disbursement.amount)', 'sum');
+
+    queryBuilder.where('disbursement.status = :status', {
+      status: disbursementStatuses[2],
+    });
+
+    if (id) {
+      const student = await this.studentsService.findStudentByUserId(id);
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id: student.id,
+        });
+    }
+
+    if (year) {
+      queryBuilder.andWhere(
+        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
+        {
+          year,
+        },
+      );
     }
 
     const result = await queryBuilder.getRawOne();
