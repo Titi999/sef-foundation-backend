@@ -10,7 +10,9 @@ import {
   IMonthTotal,
   IOverviewStatistics,
   IPagination,
+  IPerformance,
   IResponse,
+  IStudentPerformanceRanks,
 } from '../shared/response.interface';
 import { Disbursement } from './entities/disbursement.entity';
 import {
@@ -564,42 +566,47 @@ export class FinanceService {
     };
   }
 
-  public async getDisbursementPerformance(): Promise<IResponse<unknown[]>> {
-    const query = await this.disbursementRepository
+  public async getDisbursementPerformance(
+    type: string,
+    year: number,
+    categories: string[],
+  ): Promise<IStudentPerformanceRanks[]> {
+    const queryBuilder = this.disbursementRepository
       .createQueryBuilder('d')
-      .addSelect('SUM(d.amount)', 'totalDisbursement')
       .innerJoin('d.student', 's')
+      .innerJoin('s.school', 'sch')
       .select('s.name', 'student')
+      .addSelect('s.level', 'level')
+      .addSelect('sch.name', 'school')
+      .addSelect('SUM(d.amount)', 'totalDisbursement')
       .groupBy('s.id')
-      .getRawMany();
+      .addGroupBy('sch.name')
+      .orderBy('SUM(d.amount)', 'DESC');
 
-    const results = query.map((row) => ({
+    if (type) {
+      queryBuilder.where('LOWER(d.status) LIKE LOWER(:status)', {
+        status: `%${type}%`,
+      });
+    }
+
+    if (year) {
+      queryBuilder.andWhere('EXTRACT(YEAR FROM d.created_at) = :year', {
+        year,
+      });
+    }
+
+    if (categories && categories.length > 0) {
+      queryBuilder.andWhere('s.level IN (:...categories)', {
+        categories,
+      });
+    }
+
+    return (await queryBuilder.getRawMany()).map((row) => ({
       student: row.student,
       totalDisbursement: row.totalDisbursement,
+      level: row.level,
+      school: row.school,
     }));
-
-    return {
-      message: 'Disbursement Performance Loaded Successfully',
-      data: results,
-    };
-  }
-
-  async getStudentWithHighestDisbursement() {
-    const subQuery = this.disbursementRepository
-      .createQueryBuilder('d')
-      .select('MAX(SUM(d.amount))', 'highestDisbursement')
-      .innerJoin('d.student', 's')
-      .groupBy('s.id')
-      .getQuery();
-
-    return await this.disbursementRepository
-      .createQueryBuilder('d')
-      .addSelect('SUM(d.amount)', 'totalDisbursement')
-      .innerJoin('d.student', 's')
-      .select('s.name', 'student')
-      .where('SUM(d.amount) = (' + subQuery + ')')
-      .groupBy('s.id')
-      .getRawOne();
   }
 
   private async totalFundingDisbursedStats(
@@ -823,5 +830,115 @@ export class FinanceService {
 
     const result = await queryBuilder.getRawOne();
     return parseFloat(result.sum);
+  }
+
+  public async getPerformanceReport(
+    page: number,
+    search: string,
+    type: string,
+    year: number,
+    category: string,
+  ): Promise<IResponse<IPerformance>> {
+    const categories = category ? category.split(',') : [];
+
+    return {
+      message: 'Students performance loaded successfully',
+      data: {
+        studentPerformanceRank: await this.getDisbursementPerformance(
+          type,
+          year,
+          categories,
+        ),
+        studentTotalDisbursements: await this.getTotalDisbursements(
+          page,
+          search,
+          type,
+          year,
+          categories,
+        ),
+      },
+    };
+  }
+
+  async getTotalDisbursements(
+    page: number = 1,
+    search: string,
+    type: string,
+    year: number,
+    categories: string[],
+  ): Promise<IPagination<IStudentPerformanceRanks[]>> {
+    const skip = (page - 1) * 10;
+    const take = 10;
+
+    // Query to get the total count of grouped disbursements
+    const countQueryBuilder = this.disbursementRepository
+      .createQueryBuilder('d')
+      .innerJoin('d.student', 's')
+      .innerJoin('s.school', 'sch')
+      .select('s.id', 'id')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('s.id')
+      .addGroupBy('sch.name');
+
+    const countResult = await countQueryBuilder.getRawMany();
+    const total = countResult.length;
+
+    // Query to get the paginated results with total disbursements
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('d')
+      .innerJoin('d.student', 's')
+      .innerJoin('s.school', 'sch')
+      .select('s.name', 'student')
+      .addSelect('s.level', 'level')
+      .addSelect('sch.name', 'school')
+      .addSelect('SUM(d.amount)', 'totalDisbursement')
+      .groupBy('s.id')
+      .addGroupBy('sch.name')
+      .orderBy('SUM(d.amount)', 'DESC')
+      .offset(skip)
+      .limit(take);
+
+    if (search) {
+      queryBuilder.where('LOWER(s.name) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+      queryBuilder.orWhere('LOWER(sch.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${search}%`,
+      });
+    }
+
+    if (type) {
+      queryBuilder.andWhere('LOWER(d.status) LIKE LOWER(:status)', {
+        status: `%${type}%`,
+      });
+    }
+
+    if (year) {
+      queryBuilder.andWhere('EXTRACT(YEAR FROM d.created_at) = :year', {
+        year,
+      });
+    }
+
+    if (categories && categories.length > 0) {
+      queryBuilder.andWhere('s.level IN (:...categories)', {
+        categories,
+      });
+    }
+
+    const disbursements = await queryBuilder.getRawMany();
+
+    const results: IStudentPerformanceRanks[] = disbursements.map((row) => ({
+      student: row.student,
+      totalDisbursement: parseFloat(row.totalDisbursement),
+      level: row.level,
+      school: row.school,
+    }));
+
+    return {
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / take),
+      items: results,
+    };
   }
 }
