@@ -18,6 +18,7 @@ import {
   IBeneficiaryOverviewStatistics,
   IOverviewStatistics,
   IPagination,
+  IPerformance,
   IResponse,
 } from '../shared/response.interface';
 import { Budget } from './entities/budget.entity';
@@ -231,5 +232,24 @@ export class FinanceController {
     @Query('budget') budget: string,
   ): Promise<IResponse<FinanceReportInterface[]>> {
     return this.financeService.getFinancialReport(budget);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin', 'admin'])
+  @Get('performance')
+  async getPerformanceReport(
+    @Query('page') page: number,
+    @Query('search') search: string,
+    @Query('type') type: string,
+    @Query('year') year: number,
+    @Query('category') category: string,
+  ): Promise<IResponse<IPerformance>> {
+    return this.financeService.getPerformanceReport(
+      page,
+      search,
+      type,
+      year,
+      category,
+    );
   }
 }

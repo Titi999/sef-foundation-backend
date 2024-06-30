@@ -1,3 +1,5 @@
+import { Student } from '../students/student.entity';
+
 export interface IResponse<T> {
   message: string;
   data: T;
@@ -41,4 +43,16 @@ export interface IMonthTotal {
 export interface ITitleAmount {
   title: string;
   amount: number;
+}
+
+export interface IStudentPerformanceRanks {
+  student: string;
+  totalDisbursement: number;
+  school: string;
+  level: string;
+}
+
+export interface IPerformance {
+  studentPerformanceRank: IStudentPerformanceRanks[];
+  studentTotalDisbursements: IPagination<IStudentPerformanceRanks[]>;
 }
