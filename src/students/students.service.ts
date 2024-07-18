@@ -258,4 +258,10 @@ export class StudentsService {
 
     return student.user;
   }
+
+  public async findStudentById(id: string) {
+    const student = await this.studentsRepository.findOneBy({ id });
+
+    return student;
+  }
 }
