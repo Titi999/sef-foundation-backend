@@ -13,6 +13,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { StudentsModule } from './students/students.module';
 import { FinanceModule } from './finance/finance.module';
 import { SchoolsModule } from './schools/schools.module';
+import { AcademicsModule } from './academics/academics.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { SchoolsModule } from './schools/schools.module';
     ConfigModule.forRoot(),
     FinanceModule,
     SchoolsModule,
+    AcademicsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

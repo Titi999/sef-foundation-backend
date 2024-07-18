@@ -71,7 +71,7 @@ export class Student {
   @JoinColumn()
   disbursement: Disbursement[];
 
-  @Column({ nullable: true, enum: [statuses], default: 'active' })
+  @Column({ nullable: true, enum: statuses, default: 'active' })
   status: string;
 
   @Column({
