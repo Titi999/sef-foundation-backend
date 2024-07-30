@@ -4,7 +4,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,11 +14,10 @@ import { terms } from './academics.interface';
 @Entity({ name: 'academics' })
 export class Academic {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @ManyToOne(() => Student, { eager: true })
@@ -26,7 +25,13 @@ export class Academic {
   student: Student;
 
   @Column()
-  averageScore: number;
+  course: string;
+
+  @Column()
+  grade: string;
+
+  @Column()
+  score: number;
 
   @Column({ enum: terms })
   term: string;

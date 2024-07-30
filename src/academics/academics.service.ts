@@ -5,6 +5,11 @@ import { Academic } from './academics.entity';
 import { Repository } from 'typeorm';
 import { StudentsService } from '../students/students.service';
 import { IPagination, IResponse } from '../shared/response.interface';
+import {
+  AcademicPerformance,
+  AcademicPerformanceWithRanks,
+} from './academics.interface';
+import { Student } from '../students/student.entity';
 
 @Injectable()
 export class AcademicsService {
@@ -16,36 +21,26 @@ export class AcademicsService {
 
   public async createAcademic(
     academicsDto: AcademicsDto,
-    id?: string,
+    id: string,
   ): Promise<IResponse<Academic>> {
-    let findExistingAcademic: Academic;
-    if (id) {
-      findExistingAcademic = await this.academicRepository.findOneBy({
-        year: academicsDto.year,
-        term: academicsDto.term,
-        student: {
-          user: {
-            id: id,
-          },
-        },
-      });
-    } else {
-      findExistingAcademic = await this.academicRepository.findOneBy({
-        year: academicsDto.year,
-        term: academicsDto.term,
-        student: {
-          id: academicsDto.studentId,
-        },
-      });
-    }
+    const student = await this.studentsService.findStudentByUserId(id);
+    const findExistingAcademic = await this.academicRepository.findOneBy({
+      year: academicsDto.year,
+      term: academicsDto.term,
+      course: academicsDto.course,
+      student: {
+        id: student.id,
+      },
+    });
 
     if (findExistingAcademic) {
       throw new ConflictException({
         message: 'Academic results already exists with same year and term',
       });
     }
+
     const academic = new Academic();
-    await this.setAcademic(academic, academicsDto, id);
+    this.setAcademic(academic, academicsDto, student);
 
     await this.academicRepository.save(academic);
 
@@ -55,28 +50,82 @@ export class AcademicsService {
     };
   }
 
-  async getAcademics(
-    page: number,
-    searchTerm: string,
-    id?: string,
-  ): Promise<IResponse<IPagination<Academic[]>>> {
-    const skip = (page - 1) * 10;
-    const queryBuilder = this.academicRepository
+  private academicPerformanceQuery() {
+    return this.academicRepository
       .createQueryBuilder('academic')
-      .innerJoinAndSelect('academic.student', 'student')
-      .innerJoinAndSelect('student.school', 'school');
+      .innerJoin('academic.student', 'student')
+      .innerJoin('student.school', 'school')
+      .select('student.id', 'studentId')
+      .addSelect('student.name', 'studentName')
+      .addSelect('school.name', 'school')
+      .addSelect('student.level', 'grade')
+      .addSelect(
+        'SUM(academic.score) / COUNT(DISTINCT academic.id)',
+        'averageScore',
+      )
+      .groupBy('student.id')
+      .addGroupBy('school.name');
+  }
 
-    if (id) {
-      queryBuilder.where('user.id = :id', {
-        id,
+  public async getAcademicsPerformanceRank(
+    year: number,
+    term: string,
+  ): Promise<AcademicPerformance[]> {
+    const query = this.academicPerformanceQuery()
+      .orderBy('SUM(academic.score) / COUNT(DISTINCT academic.id)', 'DESC')
+      .take(3);
+
+    if (year) {
+      query.where('academic.year = :year', {
+        year,
       });
     }
 
-    if (searchTerm) {
-      queryBuilder.where('LOWER(student.name) LIKE LOWER(:searchTerm)', {
-        searchTerm: `%${searchTerm}%`,
+    if (term) {
+      query.andWhere('academic.term = :term', {
+        term,
       });
-      queryBuilder.orWhere('LOWER(school.name) LIKE LOWER(:searchTerm)', {
+    }
+
+    return await query.getRawMany();
+  }
+
+  public async getPerformanceWithRanks(
+    page: number,
+    searchTerm: string,
+    year: number,
+    term: string,
+  ): Promise<IResponse<AcademicPerformanceWithRanks>> {
+    return {
+      message: 'Academic performance loaded successfully',
+      data: {
+        performanceRank: await this.getAcademicsPerformanceRank(year, term),
+        academicPerformance: await this.getAcademics(
+          page,
+          searchTerm,
+          year,
+          term,
+        ),
+      },
+    };
+  }
+
+  public async getBeneficiaryAcademicsPerformance(
+    id: string,
+    page: number,
+    searchTerm: string,
+  ): Promise<IResponse<IPagination<Academic[]>>> {
+    const studentId = (await this.studentsService.findStudentByUserId(id)).id;
+    const skip = (page - 1) * 10;
+    const queryBuilder = this.academicRepository
+      .createQueryBuilder('academic')
+      .innerJoin('academic.student', 'student')
+      .where('student.id) LIKE LOWER(:studentId)', {
+        studentId,
+      });
+
+    if (searchTerm) {
+      queryBuilder.andWhere('LOWER(academic.course) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
       });
     }
@@ -87,7 +136,7 @@ export class AcademicsService {
       .getManyAndCount();
 
     return {
-      message: 'Academic records loaded successfully',
+      message: 'Academics records loaded successfully',
       data: {
         total,
         currentPage: page,
@@ -97,28 +146,66 @@ export class AcademicsService {
     };
   }
 
+  async getAcademics(
+    page: number,
+    searchTerm: string,
+    year: number,
+    term: string,
+  ): Promise<IPagination<AcademicPerformance[]>> {
+    const skip = (page - 1) * 10;
+    const queryBuilder = this.academicPerformanceQuery();
+
+    if (searchTerm) {
+      queryBuilder.where('LOWER(student.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${searchTerm}%`,
+      });
+      queryBuilder.orWhere('LOWER(school.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${searchTerm}%`,
+      });
+    }
+
+    if (year) {
+      queryBuilder.andWhere('academic.year = :year', {
+        year,
+      });
+    }
+
+    if (term) {
+      queryBuilder.andWhere('academic.term = :term', {
+        term,
+      });
+    }
+
+    const [academics, total] = await Promise.all([
+      queryBuilder.skip(skip).take(10).getRawMany(),
+      queryBuilder.getCount(),
+    ]);
+
+    return {
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / 10),
+      items: academics,
+    };
+  }
+
   public async updateAcademic(
     id: string,
     academicsDto: AcademicsDto,
-    userId?: string,
+    userId: string,
   ): Promise<IResponse<Academic>> {
-    let academic: Academic;
-    if (userId) {
-      academic = await this.academicRepository.findOneByOrFail({
-        id,
-        student: {
-          user: {
-            id: userId,
-          },
+    const academic = await this.academicRepository.findOneByOrFail({
+      id,
+      student: {
+        user: {
+          id: userId,
         },
-      });
-    } else {
-      academic = await this.academicRepository.findOneByOrFail({
-        id,
-      });
-    }
-    await this.setAcademic(academic, academicsDto, userId);
+      },
+    });
+    this.setAcademic(academic, academicsDto);
+
     await this.academicRepository.save(academic);
+
     return {
       message: 'Academic record updated successfully',
       data: academic,
@@ -127,23 +214,16 @@ export class AcademicsService {
 
   public async deleteAcademic(
     academicId: string,
-    userId?: string,
+    userId: string,
   ): Promise<IResponse<Academic>> {
-    let academic: Academic;
-    if (userId) {
-      academic = await this.academicRepository.findOneByOrFail({
-        id: academicId,
-        student: {
-          user: {
-            id: userId,
-          },
+    const academic = await this.academicRepository.findOneByOrFail({
+      id: academicId,
+      student: {
+        user: {
+          id: userId,
         },
-      });
-    } else {
-      academic = await this.academicRepository.findOneByOrFail({
-        id: academicId,
-      });
-    }
+      },
+    });
 
     await this.academicRepository.remove(academic);
 
@@ -153,21 +233,44 @@ export class AcademicsService {
     };
   }
 
-  private async setAcademic(
+  private setAcademic(
     academic: Academic,
     academicsDto: AcademicsDto,
-    id?: string,
+    student?: Student,
   ) {
-    if (id) {
-      academic.student = await this.studentsService.findStudentByUserId(id);
-    } else {
-      academic.student = await this.studentsService.findStudentById(
-        academicsDto.studentId,
-      );
+    if (student) {
+      academic.student = student;
     }
     academic.year = academicsDto.year;
     academic.term = academicsDto.term;
     academic.remarks = academicsDto.remarks;
-    academic.averageScore = academicsDto.averageScore;
+    academic.course = academicsDto.course;
+    academic.score = academicsDto.score;
+    academic.grade = this.getGrade(academicsDto.score);
+  }
+
+  getGrade(score: number): string {
+    switch (true) {
+      case score >= 90:
+        return 'A+';
+      case score >= 80:
+        return 'A';
+      case score >= 75:
+        return 'B+';
+      case score >= 70:
+        return 'B';
+      case score >= 65:
+        return 'C+';
+      case score >= 60:
+        return 'C';
+      case score >= 55:
+        return 'D+';
+      case score >= 50:
+        return 'D';
+      case score >= 40:
+        return 'E';
+      default:
+        return 'F';
+    }
   }
 }

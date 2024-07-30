@@ -23,7 +23,7 @@ import { NotificationService } from '../shared/notification/notification.service
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: String(process.env.JWT_SECRET),
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '24h' },
     }),
   ],
   controllers: [AuthenticationController],

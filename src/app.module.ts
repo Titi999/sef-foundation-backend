@@ -33,7 +33,7 @@ import { AcademicsModule } from './academics/academics.module';
         },
       },
       defaults: {
-        from: '"No Reply" <info@sef.com',
+        from: '"No Reply" <info@sefad2009.org',
       },
       template: {
         dir: join(__dirname, '/templates'),

@@ -12,7 +12,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@sef.com',
+      from: 'info@sefad2009.org',
       subject: 'Login Request',
       template: './loginVerification',
       context: {
@@ -29,7 +29,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@sef.com',
+      from: 'info@sefad2009.org',
       subject: 'Forgot Password',
       template: './forgotPassword',
       context: {
@@ -47,7 +47,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@sef.com',
+      from: 'info@sefad2009.org',
       subject: 'User Invitation',
       template: './userInvitation',
       context: {
@@ -65,7 +65,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@sef.com',
+      from: 'info@sefad2009.org',
       subject: 'Disbursement Request Approved',
       template: './approveDisbursement',
       context: {
@@ -81,7 +81,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@sef.com',
+      from: 'info@sefad2009.org',
       subject: 'Disbursement Request Declined',
       template: './declineDisbursement',
       context: {

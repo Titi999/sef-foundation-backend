@@ -4,21 +4,20 @@ import {
   Entity,
   JoinColumn,
   OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { BudgetDistribution } from './budgetDistribution.entity';
 import { statuses } from '../../users/user.interface';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'budgets' })
 export class Budget {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @Column()

@@ -1,22 +1,15 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
+import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
 import { statuses } from '../users/user.interface';
 import { Student } from '../students/student.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'schools' })
 export class School {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @Column()

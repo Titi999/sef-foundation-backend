@@ -8,6 +8,8 @@ import {
   Post,
   Query,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { IPagination, IResponse } from '../shared/response.interface';
@@ -24,8 +26,9 @@ import { ChangeNameDto, ChangePasswordDto } from './dto/update-user.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
-  @Get()
+  @Get('get-users')
   async getUsers(
     @Query('page') page: number,
     @Query('searchTerm') searchTerm: string,
@@ -35,12 +38,14 @@ export class UsersController {
     return this.usersService.getUsers(page, searchTerm, status, role);
   }
 
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Post('invite')
   async addUser(@Body() addUserDto: AddUserDto): Promise<IResponse<User>> {
     return this.usersService.inviteUser(addUserDto);
   }
 
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Post('edit/:id')
   async editUser(
@@ -50,18 +55,21 @@ export class UsersController {
     return this.usersService.editUser(id, editUserDto);
   }
 
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Delete(':id')
   async deleteUser(@Param('id') id: string): Promise<IResponse<User>> {
     return this.usersService.deleteUser(id);
   }
 
+  @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Get('status/:id')
   async changeStatus(@Param('id') id: string): Promise<IResponse<User>> {
     return this.usersService.changeStatus(id);
   }
 
+  @UsePipes(new ValidationPipe())
   @Patch('change-password/:id')
   async changePassword(
     @Param('id') id: string,
@@ -70,6 +78,7 @@ export class UsersController {
     return this.usersService.changePassword(id, changePasswordDto);
   }
 
+  @UsePipes(new ValidationPipe())
   @Patch('change-name/:id')
   async changeName(
     @Param('id') id: string,
