@@ -1,21 +1,36 @@
 import { IsNotEmpty, IsOptional } from 'class-validator';
-import { termsType } from './academics.interface';
+import { Terms } from './academics.interface';
 
-export class BeneficiaryAcademicsDto {
+// export class BeneficiaryAcademicsDto {
+//   @IsNotEmpty()
+//   totalScore: number;
+//
+//   @IsNotEmpty()
+//   courses: number;
+//
+//   @IsNotEmpty()
+//   term: termsType;
+//
+//   @IsOptional()
+//   remarks: string;
+//
+//   @IsNotEmpty()
+//   year: number;
+// }
+
+export class AcademicsDto {
   @IsNotEmpty()
-  averageScore: number;
+  course: string;
 
   @IsNotEmpty()
-  term: termsType;
+  score: number;
 
-  @IsOptional()
-  remarks: string;
+  @IsNotEmpty()
+  term: Terms;
 
   @IsNotEmpty()
   year: number;
-}
 
-export class AcademicsDto extends BeneficiaryAcademicsDto {
-  @IsNotEmpty()
-  studentId: string;
+  @IsOptional()
+  remarks: string;
 }

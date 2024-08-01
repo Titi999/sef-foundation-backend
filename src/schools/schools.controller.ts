@@ -26,7 +26,7 @@ export class SchoolsController {
   }
 
   @Roles(['super admin', 'admin'])
-  @Post('')
+  @Post('create')
   async createSchool(
     @Body() createSchoolDto: CreateSchoolDto,
   ): Promise<IResponse<School>> {
@@ -34,7 +34,7 @@ export class SchoolsController {
   }
 
   @Roles(['super admin', 'admin'])
-  @Get('')
+  @Get('get')
   async getSchool(
     @Query('page') page: number,
     @Query('searchTerm') searchTerm: string,

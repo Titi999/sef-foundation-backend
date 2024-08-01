@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -17,6 +18,7 @@ import { Academic } from './academics.entity';
 import { IPagination, IResponse } from '../shared/response.interface';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
+import { AcademicPerformanceWithRanks } from './academics.interface';
 
 @Controller('academics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,7 +27,7 @@ export class AcademicsController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['beneficiary'])
-  @Post(':id')
+  @Post('create/:id')
   async createBeneficiaryAcademic(
     @Param('id') id: string,
     @Body() academicsDto: AcademicsDto,
@@ -35,32 +37,39 @@ export class AcademicsController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin', 'admin'])
-  @Post()
-  async createAcademic(
-    @Body() academicsDto: AcademicsDto,
-  ): Promise<IResponse<Academic>> {
-    return this.academicsService.createAcademic(academicsDto);
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['super admin', 'admin'])
-  @Get()
-  async getAcademics(): Promise<IResponse<IPagination<Academic[]>>> {
-    return this.academicsService.getAcademics(1, '');
+  @Get('performances')
+  async getAcademicsPerformance(
+    @Query('page') page: number = 1,
+    @Query('searchTerm') searchTerm: string = '',
+    @Query('year') year: number,
+    @Query('term') term: string,
+  ): Promise<IResponse<AcademicPerformanceWithRanks>> {
+    return this.academicsService.getPerformanceWithRanks(
+      page,
+      searchTerm,
+      year,
+      term,
+    );
   }
 
   @UsePipes(new ValidationPipe())
   @Roles(['beneficiary'])
-  @Get(':id')
+  @Get('performances/:id')
   async getBeneficiaryAcademics(
     @Param('id') id: string,
+    @Query('page') page: number = 1,
+    @Query('searchTerm') searchTerm: string = '',
   ): Promise<IResponse<IPagination<Academic[]>>> {
-    return this.academicsService.getAcademics(1, '', id);
+    return this.academicsService.getBeneficiaryAcademicsPerformance(
+      id,
+      page,
+      searchTerm,
+    );
   }
 
   @UsePipes(new ValidationPipe())
   @Roles(['beneficiary'])
-  @Put(':userId/:id')
+  @Put('update/:userId/:id')
   async updateBeneficiaryAcademic(
     @Param('id') id: string,
     @Param('userId') userId: string,
@@ -70,29 +79,31 @@ export class AcademicsController {
   }
 
   @UsePipes(new ValidationPipe())
-  @Roles(['super admin', 'admin'])
-  @Put(':id')
-  async updateAcademic(
-    @Param('id') id: string,
-    @Body() academicsDto: AcademicsDto,
-  ): Promise<IResponse<Academic>> {
-    return this.academicsService.updateAcademic(id, academicsDto);
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['super admin', 'admin'])
-  @Delete(':id')
-  async deleteAcademic(@Param('id') id: string): Promise<IResponse<Academic>> {
-    return this.academicsService.deleteAcademic(id);
-  }
-
-  @UsePipes(new ValidationPipe())
   @Roles(['beneficiary'])
-  @Delete(':userId/:academicId')
+  @Delete('delete/:userId/:academicId')
   async deleteBeneficiaryAcademic(
     @Param('userId') userId: string,
     @Param('academicId') academicId: string,
   ): Promise<IResponse<Academic>> {
     return this.academicsService.deleteAcademic(academicId, userId);
   }
+
+  //This could probably be implemented in the future if we choose to allow admin
+  //to perform crud operations on beneficiary academic records
+  // @UsePipes(new ValidationPipe())
+  // @Roles(['super admin', 'admin'])
+  // @Put(':id')
+  // async updateAcademic(
+  //   @Param('id') id: string,
+  //   @Body() academicsDto: AcademicsDto,
+  // ): Promise<IResponse<Academic>> {
+  //   return this.academicsService.updateAcademic(id, academicsDto);
+  // }
+
+  // @UsePipes(new ValidationPipe())
+  // @Roles(['super admin', 'admin'])
+  // @Delete(':id')
+  // async deleteAcademic(@Param('id') id: string): Promise<IResponse<Academic>> {
+  //   return this.academicsService.deleteAcademic(id);
+  // }
 }

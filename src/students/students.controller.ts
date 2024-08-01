@@ -27,7 +27,7 @@ export class StudentsController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin', 'admin'])
-  @Get()
+  @Get('get')
   async getStudents(
     @Query('page') page: number,
     @Query('searchTerm') searchTerm: string,

@@ -4,20 +4,19 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { Disbursement } from './disbursement.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'disbursementDistributions' })
 export class DisbursementDistribution {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @Column()

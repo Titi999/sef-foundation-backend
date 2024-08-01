@@ -2,23 +2,22 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import { v4 as uuidv4 } from 'uuid';
 import { IsEmail } from 'class-validator';
 import { statuses, userRoles } from '../user.interface';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'users' })
 export class User {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @Column()

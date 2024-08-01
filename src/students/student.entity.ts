@@ -6,24 +6,23 @@ import {
   ManyToOne,
   OneToMany,
   OneToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/entities/user.entity';
 import { statuses } from '../users/user.interface';
 import { Disbursement } from '../finance/entities/disbursement.entity';
 import { School } from '../schools/school.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'students' })
 export class Student {
   constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @OneToOne(() => User, {

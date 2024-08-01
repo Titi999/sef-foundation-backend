@@ -138,7 +138,8 @@ export class AuthenticationService {
     });
 
     // Store the refresh token in redis
-    await this.refreshTokenIdsStorage.insert(user.id, refreshToken);
+    // CPanel refuses to connect with Reis DB so lets temporarily not use it till a solution is found
+    // await this.refreshTokenIdsStorage.insert(user.id, refreshToken);
 
     return {
       message: 'You have successfully logged in',
@@ -258,7 +259,8 @@ export class AuthenticationService {
   ): Promise<{ data: { accessToken: string } }> {
     try {
       const decoded = await this.jwtService.verifyAsync(refreshToken);
-      await this.refreshTokenIdsStorage.validate(decoded.sub, refreshToken);
+      //CPANEL Unable to connect with Redis DB - so lets temporary not use it
+      // await this.refreshTokenIdsStorage.validate(decoded.sub, refreshToken);
       const payload = { sub: decoded.sub, username: decoded.username };
       const accessToken = await this.jwtService.signAsync(payload);
       return { data: { accessToken } };

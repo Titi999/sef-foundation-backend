@@ -4,19 +4,19 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../users/entities/user.entity';
 import { verificationTypes } from '../authentication.interface';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'authentications' })
 export class Authentication {
   constructor() {
-    this.id = uuidv4();
+    this.id = uuidv4(); // You'll need to keep the uuid import for this
   }
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
   @ManyToOne(() => User, { eager: true })
