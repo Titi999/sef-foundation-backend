@@ -59,11 +59,15 @@ export class AcademicsController {
     @Param('id') id: string,
     @Query('page') page: number = 1,
     @Query('searchTerm') searchTerm: string = '',
+    @Query('term') term: string = '',
+    @Query('year') year: number,
   ): Promise<IResponse<IPagination<Academic[]>>> {
     return this.academicsService.getBeneficiaryAcademicsPerformance(
       id,
       page,
       searchTerm,
+      term,
+      year,
     );
   }
 

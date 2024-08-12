@@ -114,19 +114,33 @@ export class AcademicsService {
     id: string,
     page: number,
     searchTerm: string,
+    term: string,
+    year: number,
   ): Promise<IResponse<IPagination<Academic[]>>> {
     const studentId = (await this.studentsService.findStudentByUserId(id)).id;
     const skip = (page - 1) * 10;
     const queryBuilder = this.academicRepository
       .createQueryBuilder('academic')
       .innerJoin('academic.student', 'student')
-      .where('student.id) LIKE LOWER(:studentId)', {
+      .where('student.id = :studentId', {
         studentId,
       });
 
     if (searchTerm) {
       queryBuilder.andWhere('LOWER(academic.course) LIKE LOWER(:searchTerm)', {
         searchTerm: `%${searchTerm}%`,
+      });
+    }
+
+    if (term) {
+      queryBuilder.andWhere('academic.term = :term', {
+        term,
+      });
+    }
+
+    if (year) {
+      queryBuilder.andWhere('academic.year = :year', {
+        year,
       });
     }
 
