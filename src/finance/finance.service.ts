@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateBudgetDto } from './dto/budget.dto';
 import { BudgetDistribution } from './entities/budgetDistribution.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,26 +11,22 @@ import { Budget } from './entities/budget.entity';
 import {
   FinanceReportInterface,
   IBeneficiaryOverviewStatistics,
-  IMonthTotal,
   IOverviewStatistics,
   IPagination,
   IPerformance,
   IResponse,
   IStudentPerformanceRanks,
 } from '../shared/response.interface';
-import { Disbursement } from './entities/disbursement.entity';
 import {
-  CreateBeneficiaryDisbursemenDto,
-  CreateDisbursementDto,
-} from './dto/disbursement.dto';
+  Disbursement,
+  DisbursementWithStudent,
+} from './entities/disbursement.entity';
 import { StudentsService } from '../students/students.service';
-import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
-import {
-  disbursementStatuses,
-  disbursementStatusesType,
-  statuses,
-} from '../users/user.interface';
-import { monthNames } from '../utility/constants';
+import { disbursementStatusesType } from '../users/user.interface';
+import { BudgetDistributionDto } from './dto/budget-distribution.dto';
+import { AccountingRow, BudgetDetails } from './finance.interface';
+import { FinancesService } from './finances.service';
+import { periods } from '../utility/constants';
 import { NotificationService } from '../shared/notification/notification.service';
 
 @Injectable()
@@ -38,24 +38,99 @@ export class FinanceService {
     private readonly budgetRepository: Repository<Budget>,
     @InjectRepository(Disbursement)
     private readonly disbursementRepository: Repository<Disbursement>,
-    @InjectRepository(DisbursementDistribution)
-    private readonly disbursementDistributionRepository: Repository<DisbursementDistribution>,
     private readonly studentsService: StudentsService,
+    private readonly financesService: FinancesService,
     private readonly notificationService: NotificationService,
   ) {}
 
-  async createBudget(
-    createBudgetDto: CreateBudgetDto,
-  ): Promise<IResponse<Budget>> {
-    const activeBudget = await this.budgetRepository.findOneBy({
-      status: statuses[0],
+  async addBudgetDistribution(
+    id: string,
+    createBudgetDistributions: BudgetDistributionDto[],
+  ): Promise<IResponse<BudgetDistribution[]>> {
+    const budget = await this.budgetRepository.findOneByOrFail({ id });
+
+    const studentCodes = createBudgetDistributions.map(
+      ({ studentCode }) => studentCode,
+    );
+    const students =
+      await this.studentsService.findStudentsByCodes(studentCodes);
+
+    const distributions = await Promise.all(
+      createBudgetDistributions.map(async (createBudgetDistribution) => {
+        const distributionTotal = this.calculateBudgetTotal(
+          createBudgetDistribution,
+        );
+        budget.total += distributionTotal;
+
+        const student = students.find(
+          (s) => s.code === createBudgetDistribution.studentCode,
+        );
+        if (!student) {
+          throw new NotFoundException(
+            `Student with code ${createBudgetDistribution.studentCode} not found or has been deactivated`,
+          );
+        }
+
+        if (student.user) {
+          await this.notificationService.sendFundsAllocatedEmail(
+            student.user.email,
+            student.user.name,
+            String(distributionTotal),
+          );
+        }
+
+        const budgetDistribution = this.budgetDistributionRepository.create({
+          ...createBudgetDistribution,
+          student,
+          budget,
+        });
+
+        return this.budgetDistributionRepository.save(budgetDistribution);
+      }),
+    );
+
+    await this.budgetRepository.save(budget);
+    await this.budgetRepository.save(budget);
+
+    return {
+      message: 'Budget distribution created successfully',
+      data: distributions,
+    };
+  }
+
+  calculateBudgetTotal(budgetDistributionDto: BudgetDistributionDto): number {
+    return (
+      budgetDistributionDto.tuition +
+      budgetDistributionDto.textBooks +
+      budgetDistributionDto.extraClasses +
+      budgetDistributionDto.examFee +
+      budgetDistributionDto.homeCare +
+      budgetDistributionDto.uniformBag +
+      budgetDistributionDto.excursion +
+      budgetDistributionDto.transportation +
+      budgetDistributionDto.wears +
+      budgetDistributionDto.schoolFeeding +
+      budgetDistributionDto.provision +
+      budgetDistributionDto.stationery
+    );
+  }
+
+  async createBudget({
+    period,
+    year,
+  }: CreateBudgetDto): Promise<IResponse<Budget>> {
+    const existingBudget = await this.budgetRepository.findOneBy({
+      period,
+      year,
     });
-    if (activeBudget) {
-      activeBudget.status = statuses[1];
-      await this.budgetRepository.save(activeBudget);
+
+    if (existingBudget) {
+      throw new ConflictException('Budget within same period already exists');
     }
     const budget = new Budget();
-    await this.setBudget(createBudgetDto, budget, 'create');
+    budget.total = 0;
+    budget.year = year;
+    budget.period = period;
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget saved successfully',
@@ -72,16 +147,175 @@ export class FinanceService {
     };
   }
 
+  async getBudgetDetails(
+    id: string,
+    search: string,
+  ): Promise<IResponse<BudgetDetails>> {
+    return {
+      message: 'Budget details loaded successfully',
+      data: {
+        budget: await this.budgetRepository.findOneByOrFail({ id }),
+        budgetDistribution: (await this.getBudgetDistribution(id, search)).data,
+        otherBudgetDistribution:
+          await this.financesService.getOtherBudgetDistributions(id),
+        splitDetails: await this.getBudgetSplitStats(search, id),
+      },
+    };
+  }
+
+  async getBudgetSplitStats(
+    search?: string,
+    id?: string,
+    year?: number,
+    period?: string,
+    studentId?: string,
+  ) {
+    const queryBuilder = this.budgetDistributionRepository
+      .createQueryBuilder('bd')
+      .leftJoin('bd.student', 'student')
+      .leftJoin('bd.budget', 'budget')
+      .select([
+        'SUM(bd.tuition) as tuition',
+        'SUM(bd.textBooks) as textBooks',
+        'SUM(bd.extraClasses) as extraClasses',
+        'SUM(bd.examFee) as examFee',
+        'SUM(bd.homeCare) as homeCare',
+        'SUM(bd.uniformBag) as uniformBag',
+        'SUM(bd.excursion) as excursion',
+        'SUM(bd.transportation) as transportation',
+        'SUM(bd.wears) as wears',
+        'SUM(bd.schoolFeeding) as schoolFeeding',
+        'SUM(bd.stationery) as stationery',
+        'SUM(bd.provision) as provision',
+      ]);
+
+    if (studentId) {
+      queryBuilder.where('student.id = :studentId', {
+        studentId,
+      });
+    }
+
+    if (id) {
+      queryBuilder.where('bd.budgetId = :id', {
+        id,
+      });
+    }
+
+    if (year) {
+      queryBuilder.where('budget.year = :year', {
+        year,
+      });
+    }
+
+    if (period) {
+      queryBuilder.where('budget.period = :period', {
+        period,
+      });
+    }
+
+    if (search) {
+      queryBuilder.where('LOWER(student.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${search}%`,
+      });
+      queryBuilder.orWhere('LOWER(bd.class) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${search}%`,
+      });
+      queryBuilder.orWhere('LOWER(bd.school) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${search}%`,
+      });
+    }
+    const result = await queryBuilder.getRawOne();
+
+    const labelMap = {
+      tuition: 'Tuition',
+      textbooks: 'Text Books',
+      extraclasses: 'Extra Classes',
+      examfee: 'Exam Fee',
+      homecare: 'Home Care',
+      uniformbag: 'Uniform & Bag',
+      excursion: 'Excursion',
+      transportation: 'Transportation',
+      wears: 'Wears',
+      schoolFeeding: 'School Feeding',
+      stationery: 'Stationery',
+      provision: 'Provision',
+    };
+
+    const orderedKeys = [
+      'tuition',
+      'textbooks',
+      'extraclasses',
+      'examfee',
+      'homecare',
+      'uniformbag',
+      'excursion',
+      'transportation',
+      'wears',
+      'schoolfeeding',
+      'stationery',
+      'provision',
+    ];
+
+    const labels = orderedKeys.map((key) => labelMap[key]);
+    const values = orderedKeys.map((key) => Number(result[key]));
+
+    return { labels, values };
+  }
+
+  async getBudgetDistribution(
+    id: string,
+    search: string,
+  ): Promise<IResponse<BudgetDistribution[]>> {
+    const queryBuilder = this.budgetDistributionRepository
+      .createQueryBuilder('budgetDistribution')
+      .where('budgetDistribution.budgetId = :id', {
+        id,
+      })
+      .leftJoinAndSelect('budgetDistribution.student', 'student');
+
+    if (search) {
+      queryBuilder.where('LOWER(student.name) LIKE LOWER(:searchTerm)', {
+        searchTerm: `%${search}%`,
+      });
+      queryBuilder.orWhere(
+        'LOWER(budgetDistribution.class) LIKE LOWER(:searchTerm)',
+        {
+          searchTerm: `%${search}%`,
+        },
+      );
+      queryBuilder.orWhere(
+        'LOWER(budgetDistribution.school) LIKE LOWER(:searchTerm)',
+        {
+          searchTerm: `%${search}%`,
+        },
+      );
+    }
+
+    const [budgetDistributions] = await queryBuilder.getManyAndCount();
+
+    return {
+      message: 'Budget Distributions loaded successfully',
+      data: budgetDistributions,
+    };
+  }
+
   async getBudgets(
     page: number = 1,
-    status: string,
+    period: string,
+    year: string,
   ): Promise<IResponse<IPagination<Budget[]>>> {
     const skip = (page - 1) * 10;
     const queryBuilder = this.budgetRepository.createQueryBuilder('budget');
 
-    if (status) {
-      queryBuilder.andWhere('budget.status = :status', {
-        status,
+    if (period) {
+      queryBuilder.andWhere('budget.period = :period', {
+        period,
+      });
+    }
+
+    if (year) {
+      queryBuilder.andWhere('budget.year = :year', {
+        year,
       });
     }
 
@@ -112,10 +346,10 @@ export class FinanceService {
 
   async editBudget(
     id: string,
-    createBudgetDto: CreateBudgetDto,
+    { period }: CreateBudgetDto,
   ): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
-    await this.setBudget(createBudgetDto, budget, 'edit');
+    budget.period = period;
     await this.budgetRepository.save(budget);
     return {
       message: 'Budget edit successfully',
@@ -123,88 +357,13 @@ export class FinanceService {
     };
   }
 
-  public async deleteDisbursementByBeneficiary(
-    userId: string,
-    requestId: string,
-  ): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id: requestId,
-      student: {
-        user: {
-          id: userId,
-        },
-      },
-    });
-    const disbursementDistributions =
-      await this.disbursementDistributionRepository.findBy({
-        disbursement: {
-          id: disbursement.id,
-        },
-      });
-    for (const distribution of disbursementDistributions) {
-      await this.disbursementDistributionRepository.remove(distribution);
-    }
-    await this.disbursementRepository.remove(disbursement);
-    return {
-      message: 'Disbursement request deleted successfully',
-      data: disbursement,
-    };
-  }
-
   async deleteBudget(id: string): Promise<IResponse<Budget>> {
     const budget = await this.budgetRepository.findOneByOrFail({ id });
-    const disbursement = await this.disbursementRepository.findOneBy({
-      budget: {
-        id: id,
-      },
-    });
-    if (disbursement) {
-      throw new ConflictException({
-        message: 'Budget with disbursement cannot be deleted',
-      });
-    }
     await this.budgetRepository.remove(budget);
     return {
       message: 'Budget deleted successfully',
       data: budget,
     };
-  }
-
-  private async setBudget(
-    createBudgetDto: CreateBudgetDto,
-    budget: Budget,
-    type: 'create' | 'edit',
-  ) {
-    const budgetDistributions = await Promise.all(
-      createBudgetDto.distributions.map(async (distribution) => {
-        const newDistribution = new BudgetDistribution();
-        newDistribution.amount = distribution.amount;
-        newDistribution.title = distribution.title;
-        newDistribution.comments = distribution.comments;
-        newDistribution.boardingHouse = distribution.boardingHouse;
-        return this.budgetDistributionRepository.save(newDistribution);
-      }),
-    );
-    budget.budgetDistribution = budgetDistributions;
-    budget.totalDistribution =
-      this.getBudgetDistributionTotal(budgetDistributions);
-    budget.total = createBudgetDto.total;
-    if (type === 'create') {
-      budget.utilized = 0;
-      budget.surplus = createBudgetDto.total;
-    }
-    budget.startDate = createBudgetDto.startDate;
-    budget.endDate = createBudgetDto.endDate;
-  }
-
-  private getBudgetDistributionTotal(
-    budgetDistributions: BudgetDistribution[],
-  ): number {
-    return budgetDistributions.reduce(
-      (total, budgetDistribution) =>
-        total + parseFloat(String(budgetDistribution.amount)),
-      0,
-    );
   }
 
   public async getDisbursement(id: string): Promise<IResponse<Disbursement>> {
@@ -223,23 +382,34 @@ export class FinanceService {
 
   async getDisbursements(
     page: number = 1,
-    status: string,
     search: string,
+    year: number,
+    period: string,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
     const skip = (page - 1) * 10;
-    const queryBuilder =
-      this.disbursementRepository.createQueryBuilder('disbursement');
-    queryBuilder.innerJoinAndSelect('disbursement.student', 'student');
-    queryBuilder.innerJoinAndSelect('student.school', 'school');
-    if (status) {
-      queryBuilder.andWhere('disbursement.status = :status', {
-        status,
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .leftJoinAndSelect('disbursement.student', 'student');
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(' +
+          'LOWER(student.name) LIKE LOWER(:search) OR ' +
+          '(student.id IS NULL AND LOWER(disbursement.title) LIKE LOWER(:search))' +
+          ')',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (period) {
+      queryBuilder.andWhere('disbursement.period = :period', {
+        period,
       });
     }
 
-    if (search) {
-      queryBuilder.andWhere('LOWER(student.name) LIKE LOWER(:search)', {
-        search: `%${search}%`,
+    if (year) {
+      queryBuilder.andWhere('disbursement.year = :year', {
+        year,
       });
     }
     const [disbursements, total] = await queryBuilder
@@ -291,278 +461,59 @@ export class FinanceService {
     };
   }
 
-  async createDisbursement(
-    createDisbursementDto: CreateDisbursementDto,
-  ): Promise<IResponse<Disbursement>> {
-    const disbursement = new Disbursement();
-    const budget = await this.budgetRepository.findOneByOrFail({
-      status: statuses[0],
-    });
-    const student = await this.studentsService.getStudentById(
-      createDisbursementDto.studentId,
-    );
-    disbursement.amount = createDisbursementDto.amount;
-    disbursement.budget = budget;
-    disbursement.student = student;
-    disbursement.disbursementDistribution = await Promise.all(
-      createDisbursementDto.disbursementDistribution.map(
-        async (distribution) => {
-          const newDistribution = new DisbursementDistribution();
-          newDistribution.amount = distribution.amount;
-          newDistribution.title = distribution.title;
-          newDistribution.comments = distribution.comments;
-          return this.disbursementDistributionRepository.save(newDistribution);
-        },
-      ),
-    );
-
-    await this.disbursementRepository.save(disbursement);
-
-    return {
-      message: 'You have successfully created a disbursement',
-      data: disbursement,
-    };
-  }
-
-  async editDisbursement(
-    id: string,
-    createDisbursementDto: CreateDisbursementDto,
-  ): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id,
-    });
-    const budget = await this.budgetRepository.findOneByOrFail({
-      status: statuses[0],
-    });
-    const student = await this.studentsService.getStudentById(
-      createDisbursementDto.studentId,
-    );
-    disbursement.amount = createDisbursementDto.amount;
-    disbursement.budget = budget;
-    disbursement.student = student;
-    disbursement.disbursementDistribution = await Promise.all(
-      createDisbursementDto.disbursementDistribution.map(
-        async (distribution) => {
-          const newDistribution = new DisbursementDistribution();
-          newDistribution.amount = distribution.amount;
-          newDistribution.title = distribution.title;
-          return this.disbursementDistributionRepository.save(newDistribution);
-        },
-      ),
-    );
-
-    await this.disbursementRepository.save(disbursement);
-
-    return {
-      message: 'You have successfully edited a disbursement',
-      data: disbursement,
-    };
-  }
-
-  public async createBeneficiaryDisbursement(
-    id: string,
-    createBeneficiaryDisbursementDto: CreateBeneficiaryDisbursemenDto,
-  ): Promise<IResponse<Disbursement>> {
-    const studentId = (await this.studentsService.findStudentByUserId(id)).id;
-    const createDisbursementDto: CreateDisbursementDto = {
-      studentId,
-      ...createBeneficiaryDisbursementDto,
-    };
-    return await this.createDisbursement(createDisbursementDto);
-  }
-
-  public async editBeneficiaryDisbursement(
-    disbursementId: string,
-    userId: string,
-    createBeneficiaryDisbursementDto: CreateBeneficiaryDisbursemenDto,
-  ): Promise<IResponse<Disbursement>> {
-    const studentId = (await this.studentsService.findStudentByUserId(userId))
-      .id;
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id: disbursementId,
-      student: {
-        id: studentId,
-      },
-      status: disbursementStatuses[0],
-    });
-    const disbursementDistributions =
-      await this.disbursementDistributionRepository.findBy({
-        disbursement: {
-          id: disbursement.id,
-        },
-      });
-    disbursement.amount = createBeneficiaryDisbursementDto.amount;
-    disbursement.disbursementDistribution = await Promise.all(
-      createBeneficiaryDisbursementDto.disbursementDistribution.map(
-        async (distribution) => {
-          const newDistribution = new DisbursementDistribution();
-          newDistribution.amount = distribution.amount;
-          newDistribution.title = distribution.title;
-          return this.disbursementDistributionRepository.save(newDistribution);
-        },
-      ),
-    );
-    await this.disbursementRepository.save(disbursement);
-    for (const distribution of disbursementDistributions) {
-      await this.disbursementDistributionRepository.remove(distribution);
-    }
-    return {
-      message: 'Disbursement edited successfully',
-      data: disbursement,
-    };
-  }
-
-  public async approveDisbursement(
-    id: string,
-  ): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneByOrFail({
-      id,
-    });
-
-    disbursement.status = 'approved';
-    const budgetId = await disbursement.budget.id;
-    const budget = await this.budgetRepository.findOneByOrFail({
-      id: budgetId,
-    });
-    budget.utilized += disbursement.amount;
-    budget.surplus = budget.total - budget.utilized;
-
-    await this.budgetRepository.save(budget);
-    await this.disbursementRepository.save(disbursement);
-
-    await this.disbursementRepository.save(disbursement);
-    const student = await disbursement.student;
-    const user = await this.studentsService.findUser(student.id);
-    if (user)
-      await this.notificationService.sendApproveDisbursementEmail(
-        user.email,
-        user.name,
-        disbursement.amount.toString(),
-      );
-
-    return {
-      message: 'Disbursement approved successfully',
-      data: disbursement,
-    };
-  }
-
-  public async declineDisbursement(
-    id: string,
-  ): Promise<IResponse<Disbursement>> {
-    const disbursement = await this.disbursementRepository.findOneOrFail({
-      where: { id },
-    });
-    disbursement.status = 'declined';
-    await this.disbursementRepository.save(disbursement);
-    const student = await disbursement.student;
-    const user = await this.studentsService.findUser(student.id);
-    if (user)
-      await this.notificationService.sendDeclineDisbursementEmail(
-        user.email,
-        user.name,
-      );
-
-    return {
-      message: 'Disbursement declined successfully',
-      data: disbursement,
-    };
-  }
-
   public async getOverviewStats(
     year: number,
+    period: string,
   ): Promise<IResponse<IOverviewStatistics>> {
     return {
       message: 'You have successfully loaded statistics',
       data: {
-        totalFundingDisbursed: await this.totalFundingDisbursedStats(year),
-        fundingDistribution: await this.getBudgetDistributions(year),
-        fundsAllocated: await this.getFundsAllocated(year),
-        fundsDisbursed: await this.getFundsDisbursed(year),
-        studentsSupported: await this.studentsService.getAllStudentsCount(),
+        totalFundingDisbursed: await this.getDisbursementSummary(year, period),
+        fundingDistribution: await this.getBudgetSplitStats(
+          '',
+          '',
+          year,
+          period,
+        ),
+        fundsAllocated: await this.getFundsAllocated(year, period),
+        fundsDisbursed: await this.getFundsDisbursed(year, period),
+        studentsSupported: await this.studentsService.getAllStudentsCount(year),
+        totalFunds: await this.financesService.getTotalFunds(year, period),
       },
     };
   }
 
   public async getBeneficiaryOverviewStats(
-    id: string,
+    userId: string,
+    period: string,
     year: number,
   ): Promise<IResponse<IBeneficiaryOverviewStatistics>> {
+    const { id } = await this.studentsService.findStudentByUserId(userId);
     return {
       message: 'You have successfully loaded statistics',
       data: {
-        totalFundingDisbursed: await this.totalFundingDisbursedStats(year, id),
-        fundingDistribution: await this.getDisbursementDistributions(year, id),
-        fundsRequest: await this.getFundsRequested(year, id),
-        fundsDisbursed: await this.getFundsDisbursed(year, id),
-        fundsDeclined: await this.getFundsDeclined(year, id),
+        totalFundingDisbursed: await this.getDisbursementSummary(
+          year,
+          period,
+          id,
+        ),
+        pendingRequests:
+          await this.financesService.getPendingRequestsByStudent(id),
+        totalRequests: await this.financesService.getTotalRequestsByStudent(id),
+        fundingDistribution: await this.getBudgetSplitStats(
+          '',
+          '',
+          year,
+          period,
+          id,
+        ),
+        fundsDisbursed: await this.getFundsDisbursed(year, period, id),
+        fundsAllocated: await this.getFundsAllocatedToBeneficiary(
+          id,
+          period,
+          year,
+        ),
       },
-    };
-  }
-
-  public async getFinancialReport(
-    budgetId: string,
-  ): Promise<IResponse<FinanceReportInterface[]>> {
-    const budgetDistributionsQuery = this.budgetDistributionRepository
-      .createQueryBuilder('bd')
-      .select('bd.title', 'title')
-      .addSelect('SUM(bd.amount)', 'budgetDistributionAmount')
-      .groupBy('bd.title');
-
-    const disbursementDistributionsQuery =
-      this.disbursementDistributionRepository
-        .createQueryBuilder('dd')
-        .select('dd.title', 'title')
-        .addSelect('SUM(dd.amount)', 'disbursementDistributionAmount')
-        .innerJoin('dd.disbursement', 'disbursement')
-        .where('disbursement.status = :status', {
-          status: disbursementStatuses[1],
-        })
-        .groupBy('dd.title');
-
-    if (budgetId) {
-      budgetDistributionsQuery
-        .innerJoin('bd.budget', 'budget')
-        .where('budget.id = :budgetId', {
-          budgetId,
-        });
-
-      disbursementDistributionsQuery
-        .innerJoin('disbursement.budget', 'budget')
-        .where('budget.id = :budgetId', {
-          budgetId,
-        });
-    }
-
-    const budgetDistributions = await budgetDistributionsQuery.getRawMany();
-    const disbursementDistributions =
-      await disbursementDistributionsQuery.getRawMany();
-
-    const combined: FinanceReportInterface[] = budgetDistributions.map((bd) => {
-      const dd = disbursementDistributions.find((dd) => dd.title === bd.title);
-      return {
-        title: bd.title,
-        budgetDistributionAmount: bd.budgetDistributionAmount,
-        disbursementDistributionAmount: dd
-          ? dd.disbursementDistributionAmount
-          : 0,
-      };
-    });
-
-    const remainingDisbursements = disbursementDistributions.filter(
-      (dd) => !budgetDistributions.find((bd) => bd.title === dd.title),
-    );
-
-    remainingDisbursements.forEach((dd) => {
-      combined.push({
-        title: dd.title,
-        budgetDistributionAmount: 0,
-        disbursementDistributionAmount: dd.disbursementDistributionAmount,
-      });
-    });
-
-    return {
-      message: 'Financial reports loaded successfully',
-      data: combined,
     };
   }
 
@@ -609,133 +560,64 @@ export class FinanceService {
     }));
   }
 
-  private async totalFundingDisbursedStats(
-    year: number,
-    id?: string,
-  ): Promise<IMonthTotal[]> {
-    const queryBuilder = this.disbursementRepository
-      .createQueryBuilder('disbursement')
-      .select('EXTRACT(MONTH FROM disbursement.created_at)', 'month')
-      .addSelect('SUM(disbursement.amount)', 'total')
-      .groupBy('EXTRACT(MONTH FROM disbursement.created_at)')
-      .orderBy('EXTRACT(MONTH FROM disbursement.created_at)', 'ASC');
-
-    queryBuilder.where('disbursement.status = :status', {
-      status: disbursementStatuses[1],
-    });
-
-    if (id) {
-      const student = await this.studentsService.findStudentByUserId(id);
-      queryBuilder
-        .innerJoin('disbursement.student', 'student')
-        .andWhere('student.id = :id', {
-          id: student.id,
-        });
-    }
-
-    if (year) {
-      queryBuilder.andWhere(
-        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
-        {
-          year,
-        },
-      );
-    }
-    const rawResults = await queryBuilder.getRawMany();
-    return rawResults.map((result) => ({
-      month: monthNames[result.month - 1],
-      total: parseFloat(result.total),
-    }));
-  }
-
-  private async getBudgetDistributions(
+  private async getFundsAllocatedToBeneficiary(
+    id: string,
+    period?: string,
     year?: number,
-  ): Promise<{ title: string; amount: number }[]> {
-    const queryBuilder = this.budgetDistributionRepository
+  ): Promise<number> {
+    const query = this.budgetDistributionRepository
       .createQueryBuilder('budgetDistribution')
-      .select(['budgetDistribution.title', 'budgetDistribution.amount']);
-    if (year) {
-      queryBuilder.where(
-        'EXTRACT(YEAR FROM budgetDistribution.created_at) = :year',
-        { year },
-      );
-    }
+      .innerJoin('budgetDistribution.student', 'student')
+      .innerJoin('budgetDistribution.budget', 'budget')
+      .where('student.id = :id', { id });
 
-    const rawResults = await queryBuilder.getRawMany();
-
-    return rawResults.map((result) => ({
-      title: result.budgetDistribution_title,
-      amount: parseFloat(result.budgetDistribution_amount),
-    }));
-  }
-
-  private async getDisbursementDistributions(
-    year: number,
-    id?: string,
-  ): Promise<{ title: string; amount: number }[]> {
-    const queryBuilder = this.disbursementDistributionRepository
-      .createQueryBuilder('disbursementDistribution')
-      .innerJoin('disbursementDistribution.disbursement', 'disbursement')
-      .select([
-        'disbursementDistribution.title',
-        'disbursementDistribution.amount',
-      ])
-      .where('disbursement.status = :status', {
-        status: disbursementStatuses[1],
-      });
-
-    if (id) {
-      const student = await this.studentsService.findStudentByUserId(id);
-      queryBuilder
-        .innerJoin('disbursement.student', 'student')
-        .andWhere('student.id = :id', {
-          id: student.id,
-        });
+    if (period) {
+      query.andWhere('budget.period = :period', { period });
     }
 
     if (year) {
-      queryBuilder.andWhere(
-        'EXTRACT(YEAR FROM disbursementDistribution.created_at) = :year',
-        { year },
-      );
+      query.andWhere('budget.year = :year', { year });
     }
 
-    const rawResults = await queryBuilder.getRawMany();
+    const budgetDistributions = await query.getMany();
+    console.log(budgetDistributions);
 
-    return this.combine(
-      rawResults.map((result) => ({
-        title: result.disbursementDistribution_title,
-        amount: parseFloat(result.disbursementDistribution_amount),
-      })),
-    );
+    return budgetDistributions.reduce((sum, distribution) => {
+      return (
+        sum +
+        (distribution.tuition +
+          distribution.textBooks +
+          distribution.extraClasses +
+          distribution.examFee +
+          distribution.homeCare +
+          distribution.uniformBag +
+          distribution.excursion +
+          distribution.transportation +
+          distribution.wears +
+          distribution.schoolFeeding +
+          distribution.stationery +
+          distribution.provision)
+      );
+    }, 0);
   }
 
-  private combine(expenses: { title: string; amount: number }[]) {
-    const expenseMap: { [key: string]: number } = {};
-
-    expenses.forEach((expense) => {
-      const normalizedTitle = expense.title.toLowerCase();
-      if (expenseMap[normalizedTitle]) {
-        expenseMap[normalizedTitle] += expense.amount;
-      } else {
-        expenseMap[normalizedTitle] = expense.amount;
-      }
-    });
-
-    return Object.keys(expenseMap).map((title) => ({
-      title: title.replace(/\b\w/g, (char) => char.toUpperCase()),
-      amount: expenseMap[title],
-    }));
-  }
-
-  private async getFundsAllocated(year?: number): Promise<number> {
+  private async getFundsAllocated(
+    year?: number,
+    period?: string,
+  ): Promise<number> {
     const queryBuilder = this.budgetRepository
       .createQueryBuilder('budget')
       .select('SUM(budget.total)', 'sum');
 
     if (year) {
-      queryBuilder.where('EXTRACT(YEAR FROM budget.created_at) = :year', {
+      queryBuilder.where('budget.year = :year', {
         year,
+      });
+    }
+
+    if (period) {
+      queryBuilder.andWhere('budget.period = :period', {
+        period,
       });
     }
 
@@ -743,89 +625,108 @@ export class FinanceService {
     return parseFloat(result.sum);
   }
 
-  private async getFundsDisbursed(year: number, id?: string): Promise<number> {
+  async getDisbursementSummary(
+    year: number,
+    period: string,
+    id?: string,
+  ): Promise<{ labels: string[]; values: number[] }> {
     const queryBuilder = this.disbursementRepository
       .createQueryBuilder('disbursement')
-      .select('SUM(disbursement.amount)', 'sum');
+      .select('disbursement.period', 'period')
+      .addSelect('SUM(disbursement.amount)', 'total')
+      .groupBy('disbursement.period');
 
-    queryBuilder.where('disbursement.status = :status', {
-      status: disbursementStatuses[1],
+    if (id) {
+      queryBuilder
+        .innerJoin('disbursement.student', 'student')
+        .andWhere('student.id = :id', {
+          id,
+        });
+    }
+
+    if (year) {
+      queryBuilder.where('disbursement.year = :year', { year });
+    }
+
+    if (period) {
+      queryBuilder.where('disbursement.period = :period', { period });
+    }
+
+    const result = await queryBuilder.getRawMany();
+
+    const summaryMap = new Map<string, number>();
+    result.forEach((item) => {
+      summaryMap.set(item.period, parseFloat(item.total));
     });
 
-    if (id) {
-      const student = await this.studentsService.findStudentByUserId(id);
-      queryBuilder
-        .innerJoin('disbursement.student', 'student')
-        .andWhere('student.id = :id', {
-          id: student.id,
-        });
-    }
+    const values = periods.map((period) => summaryMap.get(period) || 0);
 
-    if (year) {
-      queryBuilder.andWhere(
-        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
-        {
-          year,
-        },
-      );
-    }
-
-    const result = await queryBuilder.getRawOne();
-    return parseFloat(result.sum);
+    return {
+      labels: periods,
+      values: values,
+    };
   }
 
-  private async getFundsRequested(year: number, id?: string): Promise<number> {
-    const queryBuilder = this.disbursementRepository
-      .createQueryBuilder('disbursement')
-      .select('SUM(disbursement.amount)', 'sum');
-
-    if (id) {
-      const student = await this.studentsService.findStudentByUserId(id);
-      queryBuilder
-        .innerJoin('disbursement.student', 'student')
-        .andWhere('student.id = :id', {
-          id: student.id,
-        });
-    }
+  async getBudgetSummary(
+    year: number,
+    period: string,
+  ): Promise<{ labels: string[]; values: number[] }> {
+    const queryBuilder = this.budgetRepository
+      .createQueryBuilder('budget')
+      .select('budget.period', 'period')
+      .addSelect('SUM(budget.total)', 'total')
+      .groupBy('budget.period');
 
     if (year) {
-      queryBuilder.andWhere(
-        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
-        {
-          year,
-        },
-      );
+      queryBuilder.where('budget.year = :year', { year });
     }
 
-    const result = await queryBuilder.getRawOne();
-    return parseFloat(result.sum);
-  }
+    if (period) {
+      queryBuilder.where('budget.period = :period', { period });
+    }
 
-  private async getFundsDeclined(year: number, id?: string): Promise<number> {
-    const queryBuilder = this.disbursementRepository
-      .createQueryBuilder('disbursement')
-      .select('SUM(disbursement.amount)', 'sum');
+    const result = await queryBuilder.getRawMany();
 
-    queryBuilder.where('disbursement.status = :status', {
-      status: disbursementStatuses[2],
+    const summaryMap = new Map<string, number>();
+    result.forEach((item) => {
+      summaryMap.set(item.period, parseFloat(item.total));
     });
 
+    const values = periods.map((period) => summaryMap.get(period) || 0);
+
+    return {
+      labels: periods,
+      values: values,
+    };
+  }
+
+  private async getFundsDisbursed(
+    year: number,
+    period: string,
+    id?: string,
+  ): Promise<number> {
+    const queryBuilder = this.disbursementRepository
+      .createQueryBuilder('disbursement')
+      .select('SUM(disbursement.amount)', 'sum');
+
     if (id) {
-      const student = await this.studentsService.findStudentByUserId(id);
       queryBuilder
         .innerJoin('disbursement.student', 'student')
         .andWhere('student.id = :id', {
-          id: student.id,
+          id,
         });
     }
 
     if (year) {
-      queryBuilder.andWhere(
-        'EXTRACT(YEAR FROM disbursement.created_at) = :year',
-        {
-          year,
-        },
-      );
+      queryBuilder.andWhere('disbursement.year = :year', {
+        year,
+      });
+    }
+
+    if (period) {
+      queryBuilder.andWhere('disbursement.period = :period', {
+        period,
+      });
     }
 
     const result = await queryBuilder.getRawOne();
@@ -939,6 +840,105 @@ export class FinanceService {
       currentPage: page,
       totalPages: Math.ceil(total / take),
       items: results,
+    };
+  }
+
+  async getFinanceReport(
+    period: string,
+    year: number,
+  ): Promise<IResponse<FinanceReportInterface>> {
+    return {
+      message: 'Finance Report generated successfully',
+      data: {
+        ...(await this.getAccountingTable(period, year)),
+        summaryChart: {
+          budget: await this.getBudgetSummary(year, period),
+          disbursements: await this.getDisbursementSummary(year, period),
+          fund: await this.financesService.getFundSummary(year, period),
+        },
+      },
+    };
+  }
+
+  async getAccountingTable(
+    period?: string,
+    year?: number,
+  ): Promise<{ accounting: AccountingRow[]; runningTotal: number }> {
+    const whereClause = {};
+    if (period) whereClause['period'] = period;
+    if (year) whereClause['year'] = year;
+
+    const [budgets, disbursements, funds] = await Promise.all([
+      this.budgetRepository.find({
+        where: whereClause,
+        select: ['id', 'total', 'year', 'period', 'created_at'],
+      }),
+      this.disbursementRepository.find({
+        where: whereClause,
+        relations: ['student'],
+        select: [
+          'id',
+          'amount',
+          'title',
+          'period',
+          'year',
+          'created_at',
+          'student',
+        ],
+      }) as Promise<DisbursementWithStudent[]>,
+      this.financesService.getFundsForAccount(whereClause),
+    ]);
+
+    const combinedData: AccountingRow[] = [
+      ...budgets.map((b) => ({
+        id: b.id,
+        type: 'budget' as const,
+        amount: b.total,
+        description: `Budget for ${b.period} ${b.year}`,
+        date: b.created_at,
+        runningTotal: 0,
+        period: b.period,
+        year: b.year,
+      })),
+      ...disbursements.map((d) => ({
+        id: d.id,
+        type: 'disbursement' as const,
+        amount: -d.amount, // negative for subtraction
+        description: d.__student__
+          ? `Disbursement to ${d.__student__?.name}`
+          : `Disbursement: ${d.title}`,
+        date: d.created_at,
+        runningTotal: 0,
+        period: d.period,
+        year: d.year,
+      })),
+      ...funds.map((f) => ({
+        id: f.id,
+        type: 'fund' as const,
+        amount: f.amount,
+        description: `Fund: ${f.title}`,
+        date: f.created_at,
+        runningTotal: 0,
+        period: f.period,
+        year: f.year,
+      })),
+    ];
+
+    // Sort by creation date
+    combinedData.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    // Calculate running total
+    let runningTotal = 0;
+    for (const row of combinedData) {
+      if (row.type !== 'budget') {
+        runningTotal += row.amount;
+      }
+      row.runningTotal = runningTotal;
+    }
+
+    return {
+      accounting: combinedData,
+      runningTotal,
     };
   }
 }

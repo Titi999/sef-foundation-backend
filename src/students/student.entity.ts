@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Generated,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -24,6 +25,14 @@ export class Student {
 
   @PrimaryColumn('uuid')
   id: string;
+
+  @Column({
+    type: 'varchar',
+    length: 6,
+    unique: true,
+  })
+  @Generated('increment')
+  code: string;
 
   @OneToOne(() => User, {
     nullable: true,

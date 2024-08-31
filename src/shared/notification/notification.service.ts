@@ -58,7 +58,7 @@ export class NotificationService {
     });
   }
 
-  async sendApproveDisbursementEmail(
+  async sendApproveEmail(
     to: string,
     name: string,
     amount: string,
@@ -66,7 +66,7 @@ export class NotificationService {
     return await this.mailerService.sendMail({
       to,
       from: 'info@sefad2009.org',
-      subject: 'Disbursement Request Approved',
+      subject: 'Request Approved',
       template: './approveDisbursement',
       context: {
         name,
@@ -75,14 +75,62 @@ export class NotificationService {
     });
   }
 
-  async sendDeclineDisbursementEmail(
+  async sendFundsAllocatedEmail(
     to: string,
     name: string,
+    amount: string,
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
       from: 'info@sefad2009.org',
-      subject: 'Disbursement Request Declined',
+      subject: 'Funds allocated ',
+      template: './fundsAllocated',
+      context: {
+        name,
+        amount,
+      },
+    });
+  }
+
+  async sendFundsDisbursedEmail(
+    to: string,
+    name: string,
+    amount: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sefad2009.org',
+      subject: 'Funds Disbursed',
+      template: './fundsDisbursed',
+      context: {
+        name,
+        amount,
+      },
+    });
+  }
+
+  async newRequestEmail(
+    to: string,
+    name: string,
+    amount: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sefad2009.org',
+      subject: 'New Request Added',
+      template: './newRequest',
+      context: {
+        name,
+        amount,
+      },
+    });
+  }
+
+  async sendDeclineEmail(to: string, name: string): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to,
+      from: 'info@sefad2009.org',
+      subject: 'Request Declined',
       template: './declineDisbursement',
       context: {
         name,

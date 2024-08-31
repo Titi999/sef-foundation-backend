@@ -39,8 +39,10 @@ export class StudentsController {
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
   @Get('all')
-  async getAllStudents(): Promise<IResponse<Student[]>> {
-    return this.studentsService.getAllStudents();
+  async getAllStudents(
+    @Query('user') user: string = 'no',
+  ): Promise<IResponse<Student[]>> {
+    return this.studentsService.getAllStudents(user);
   }
 
   @UsePipes(new ValidationPipe())

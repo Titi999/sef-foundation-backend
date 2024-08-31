@@ -6,10 +6,6 @@ export const statuses = ['active', 'inactive'] as const;
 
 export type statusesTypes = (typeof statuses)[number];
 
-export const disbursementStatuses = [
-  'pending',
-  'approved',
-  'declined',
-] as const;
+export const requestStatuses = ['pending', 'approved', 'declined'] as const;
 
-export type disbursementStatusesType = (typeof disbursementStatuses)[number];
+export type disbursementStatusesType = (typeof requestStatuses)[number];

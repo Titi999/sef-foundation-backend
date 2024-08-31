@@ -4,20 +4,20 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Student } from '../../students/student.entity';
-import { Budget } from './budget.entity';
-import { DisbursementDistribution } from './disbursementDistribution.entity';
-import { disbursementStatuses } from '../../users/user.interface';
 import { v4 as uuidv4 } from 'uuid';
+
+export interface DisbursementWithStudent extends Disbursement {
+  __student__: Student | null;
+}
 
 @Entity({ name: 'disbursements' })
 export class Disbursement {
   constructor() {
-    this.id = uuidv4(); // You'll need to keep the uuid import for this
+    this.id = uuidv4();
   }
 
   @PrimaryColumn('uuid')
@@ -27,25 +27,17 @@ export class Disbursement {
   @JoinColumn({ name: 'studentId' })
   student: Student;
 
-  @ManyToOne(() => Budget, { lazy: true })
-  @JoinColumn({ name: 'budgetId' })
-  budget: Budget;
+  @Column({ nullable: true })
+  title: string;
 
-  @OneToMany(
-    () => DisbursementDistribution,
-    (disbursementDistribution) => disbursementDistribution.disbursement,
-    {
-      eager: true,
-    },
-  )
-  @JoinColumn()
-  disbursementDistribution: DisbursementDistribution[];
-
-  @Column({ enum: disbursementStatuses, default: disbursementStatuses[0] })
-  status: string;
+  @Column()
+  period: string;
 
   @Column()
   amount: number;
+
+  @Column({ default: 2024 })
+  year: number;
 
   @CreateDateColumn({
     type: 'timestamp',

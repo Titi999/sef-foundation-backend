@@ -1,4 +1,4 @@
-import { Student } from '../students/student.entity';
+import { AccountingRow } from '../finance/finance.interface';
 
 export interface IResponse<T> {
   message: string;
@@ -13,26 +13,36 @@ export interface IPagination<T> {
 }
 
 export interface IOverviewStatistics extends IOverviewStatisticsBase {
-  fundsAllocated: number;
   studentsSupported: number;
+  totalFunds: number;
 }
 
 export interface IBeneficiaryOverviewStatistics
   extends IOverviewStatisticsBase {
-  fundsRequest: number;
-  fundsDeclined: number;
+  totalRequests: number;
+  pendingRequests: number;
+}
+
+export interface IChart {
+  labels: string[];
+  values: number[];
 }
 
 export interface IOverviewStatisticsBase {
-  totalFundingDisbursed: IMonthTotal[];
-  fundingDistribution: ITitleAmount[];
+  fundsAllocated: number;
+  totalFundingDisbursed: IChart;
+  fundingDistribution: IChart;
   fundsDisbursed: number;
 }
 
 export interface FinanceReportInterface {
-  title: string;
-  budgetDistributionAmount: number;
-  disbursementDistributionAmount: number;
+  accounting: AccountingRow[];
+  summaryChart: {
+    fund: IChart;
+    disbursements: IChart;
+    budget: IChart;
+  };
+  runningTotal: number;
 }
 
 export interface IMonthTotal {

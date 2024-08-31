@@ -1,17 +1,11 @@
 import { IsNumber, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateBudgetDto {
-  @IsNumber()
-  total: number;
+  @IsNotEmpty()
+  period: string;
 
   @IsNotEmpty()
-  startDate: Date;
-
-  @IsNotEmpty()
-  endDate: Date;
-
-  @IsNotEmpty()
-  distributions: CreateBudgetDistributionDto[];
+  year: number;
 }
 
 export class CreateBudgetDistributionDto {
