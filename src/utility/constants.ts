@@ -12,3 +12,9 @@ export const monthNames = [
   'November',
   'December',
 ];
+
+export const periods = [
+  'September - December',
+  'January - April',
+  'May - August',
+];

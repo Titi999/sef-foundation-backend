@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Budget } from './entities/budget.entity';
 import { BudgetDistribution } from './entities/budgetDistribution.entity';
 import { Disbursement } from './entities/disbursement.entity';
-import { DisbursementDistribution } from './entities/disbursementDistribution.entity';
+import { Request } from './entities/request.entity';
 import { StudentsService } from '../students/students.service';
 import { Student } from '../students/student.entity';
 import { UsersService } from '../users/users.service';
@@ -13,9 +13,10 @@ import { User } from '../users/entities/user.entity';
 import { NotificationService } from '../shared/notification/notification.service';
 import { SchoolsService } from '../schools/schools.service';
 import { School } from '../schools/school.entity';
-import { AuthenticationService } from '../authentication/authentication.service';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshTokenIdsStorage } from '../authentication/refresh-token-ids-storage';
+import { OtherBudgetDistribution } from './entities/other-budget-distribution.entity';
+import { FinancesService } from './finances.service';
+import { Fund } from './entities/fund.entity';
 
 @Module({
   imports: [
@@ -23,10 +24,12 @@ import { RefreshTokenIdsStorage } from '../authentication/refresh-token-ids-stor
       Budget,
       BudgetDistribution,
       Disbursement,
-      DisbursementDistribution,
+      Request,
       Student,
       User,
       School,
+      OtherBudgetDistribution,
+      Fund,
     ]),
   ],
   providers: [
@@ -36,6 +39,7 @@ import { RefreshTokenIdsStorage } from '../authentication/refresh-token-ids-stor
     NotificationService,
     SchoolsService,
     JwtService,
+    FinancesService,
   ],
   controllers: [FinanceController],
 })

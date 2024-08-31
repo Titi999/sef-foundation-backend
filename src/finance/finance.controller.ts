@@ -5,9 +5,9 @@ import {
   Get,
   Param,
   Patch,
-  Headers,
   Post,
   Query,
+  Req,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -27,24 +27,33 @@ import { Roles } from '../authentication/guards/roles/roles.decorator';
 import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
 import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import { Disbursement } from './entities/disbursement.entity';
-import {
-  CreateBeneficiaryDisbursemenDto,
-  CreateDisbursementDto,
-} from './dto/disbursement.dto';
+import { CreateDisbursementDto } from './dto/disbursement.dto';
 import { disbursementStatusesType } from '../users/user.interface';
-import { JwtService } from '@nestjs/jwt';
-import { IJwtPayload } from '../authentication/strategy/jwt.interface';
+import {
+  BudgetDistributionDto,
+  RequestDto,
+} from './dto/budget-distribution.dto';
+import { BudgetDistribution } from './entities/budgetDistribution.entity';
+import { BudgetDetails } from './finance.interface';
+import { FinancesService } from './finances.service';
+import { OtherBudgetDistributionDto } from './dto/other-budget-distribution.dto';
+import { OtherBudgetDistribution } from './entities/other-budget-distribution.entity';
+import { FundDto } from './dto/fund.dto';
+import { Fund } from './entities/fund.entity';
+import { UpdateResult } from 'typeorm';
+import { Request } from './entities/request.entity';
+import { Request as ExpressRequest } from 'express';
+import { User } from '../users/entities/user.entity';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FinanceController {
   constructor(
     private readonly financeService: FinanceService,
-    private jwtService: JwtService,
+    private readonly financesService: FinancesService,
   ) {}
 
   @UsePipes(new ValidationPipe())
-  @Roles(['super admin'])
   @Get('budgets/all')
   async getAllBudgets(): Promise<IResponse<Budget[]>> {
     return this.financeService.getAllBudgets();
@@ -62,9 +71,30 @@ export class FinanceController {
   @Get('budgets')
   async getBudgets(
     @Query('page') page: number,
-    @Query('status') status: string,
+    @Query('period') period: string,
+    @Query('year') year: string,
   ): Promise<IResponse<IPagination<Budget[]>>> {
-    return this.financeService.getBudgets(page, status);
+    return this.financeService.getBudgets(page, period, year);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Get('requests')
+  async getRequests(
+    @Query('userId') userId: string,
+    @Query('page') page: number,
+    @Query('status') status: string,
+  ): Promise<IResponse<IPagination<Request[]>>> {
+    return this.financesService.getRequests(userId, page, status);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('budget-details/:id')
+  async getBudgetDetails(
+    @Param('id') id: string,
+    @Query('search') search: string,
+  ): Promise<IResponse<BudgetDetails>> {
+    return this.financeService.getBudgetDetails(id, search);
   }
 
   @UsePipes(new ValidationPipe())
@@ -74,6 +104,71 @@ export class FinanceController {
     @Body() createBudgetDto: CreateBudgetDto,
   ): Promise<IResponse<Budget>> {
     return this.financeService.createBudget(createBudgetDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Post('budget/:id')
+  async createBudgetDistribution(
+    @Body() createBudgetDistributions: BudgetDistributionDto[],
+    @Param('id') id: string,
+  ): Promise<IResponse<BudgetDistribution[]>> {
+    return this.financeService.addBudgetDistribution(
+      id,
+      createBudgetDistributions,
+    );
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post('request')
+  async createRequest(
+    @Body() createRequest: RequestDto,
+    @Req() req: ExpressRequest,
+  ): Promise<IResponse<Request>> {
+    const { id } = req.user as User;
+    return this.financesService.addRequest(id, createRequest);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Delete('request/:id')
+  async deleteRequest(@Param('id') id: string): Promise<IResponse<Request>> {
+    return this.financesService.deleteRequest(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Patch('request/:id')
+  async editRequest(
+    @Body() createRequest: RequestDto,
+    @Param('id') id: string,
+  ): Promise<IResponse<Request>> {
+    return this.financesService.editRequest(id, createRequest);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('request/approve/:id')
+  async approveRequest(@Param('id') id: string): Promise<IResponse<Request>> {
+    return this.financesService.approveRequest(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('request/decline/:id')
+  async declineRequest(@Param('id') id: string): Promise<IResponse<Request>> {
+    return this.financesService.declineRequest(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Post('other-budget/:id')
+  async createOtherBudgetDistribution(
+    @Body() otherBudgetDistributionDto: OtherBudgetDistributionDto,
+    @Param('id') id: string,
+  ): Promise<IResponse<OtherBudgetDistribution>> {
+    return this.financesService.createOtherBudgetDistribution(
+      id,
+      otherBudgetDistributionDto,
+    );
   }
 
   @UsePipes(new ValidationPipe())
@@ -107,10 +202,11 @@ export class FinanceController {
   @Get('disbursements')
   async getDisbursements(
     @Query('page') page: number,
+    @Query('year') year: number,
     @Query('search') search: string,
-    @Query('status') status: string,
+    @Query('period') period: string,
   ): Promise<IResponse<IPagination<Disbursement[]>>> {
-    return this.financeService.getDisbursements(page, status, search);
+    return this.financeService.getDisbursements(page, search, year, period);
   }
 
   @UsePipes(new ValidationPipe())
@@ -130,7 +226,7 @@ export class FinanceController {
   async createDisbursement(
     @Body() createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
-    return await this.financeService.createDisbursement(createDisbursementDto);
+    return await this.financesService.createDisbursement(createDisbursementDto);
   }
 
   @UsePipes(new ValidationPipe())
@@ -140,35 +236,7 @@ export class FinanceController {
     @Param('id') id: string,
     @Body() createDisbursementDto: CreateDisbursementDto,
   ): Promise<IResponse<Disbursement>> {
-    return await this.financeService.editDisbursement(
-      id,
-      createDisbursementDto,
-    );
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['beneficiary'])
-  @Patch('request/:userId/:disbursementId')
-  async editBeneficiaryDisbursement(
-    @Param('userId') userId: string,
-    @Param('disbursementId') disbursementId: string,
-    @Body() createDisbursementDto: CreateBeneficiaryDisbursemenDto,
-  ): Promise<IResponse<Disbursement>> {
-    return await this.financeService.editBeneficiaryDisbursement(
-      disbursementId,
-      userId,
-      createDisbursementDto,
-    );
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['beneficiary'])
-  @Post('disbursement/:id')
-  async createBeneficiaryDisbursement(
-    @Param('id') id: string,
-    @Body() createDisbursementDto: CreateBeneficiaryDisbursemenDto,
-  ): Promise<IResponse<Disbursement>> {
-    return await this.financeService.createBeneficiaryDisbursement(
+    return await this.financesService.updateDisbursement(
       id,
       createDisbursementDto,
     );
@@ -176,34 +244,46 @@ export class FinanceController {
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin'])
-  @Get('disbursements/approve/:id')
-  async approveDisbursement(
-    @Param('id') id: string,
-  ): Promise<IResponse<Disbursement>> {
-    return this.financeService.approveDisbursement(id);
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['super admin'])
-  @Get('disbursements/decline/:id')
-  async declineDisbursement(
-    @Param('id') id: string,
-  ): Promise<IResponse<Disbursement>> {
-    return this.financeService.declineDisbursement(id);
-  }
-
-  @UsePipes(new ValidationPipe())
-  @Roles(['beneficiary'])
   @Delete('disbursement/:id')
-  async deleteDisbursementByBeneficiary(
+  async deleteDisbursement(
     @Param('id') id: string,
-    @Headers('authorization') authorizationHeader: any,
   ): Promise<IResponse<Disbursement>> {
-    const token = authorizationHeader.split(' ')[1];
-    const decoded = (await this.jwtService.verifyAsync(token, {
-      secret: process.env.JWT_SECRET,
-    })) as IJwtPayload;
-    return this.financeService.deleteDisbursementByBeneficiary(decoded.sub, id);
+    return await this.financesService.deleteDisbursement(id);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Post('fund')
+  async createFund(@Body() fundDto: FundDto): Promise<IResponse<Fund>> {
+    return await this.financesService.createFund(fundDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Get('fund')
+  async getFunds(
+    @Query('page') page: number,
+    @Query('period') period: string,
+    @Query('year') year: number,
+  ): Promise<IResponse<IPagination<Fund[]>>> {
+    return await this.financesService.getFunds(page, period, year);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Patch('fund/:id')
+  async editFunds(
+    @Param('id') id: string,
+    @Body() fundDto: FundDto,
+  ): Promise<IResponse<UpdateResult>> {
+    return await this.financesService.editFund(id, fundDto);
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Roles(['super admin'])
+  @Delete('fund/:id')
+  async deleteFunds(@Param('id') id: string): Promise<IResponse<Fund>> {
+    return await this.financesService.deleteFund(id);
   }
 
   @UsePipes(new ValidationPipe())
@@ -211,8 +291,9 @@ export class FinanceController {
   @Get('statistics')
   async getOverviewStats(
     @Query('year') year: number,
+    @Query('period') period: string,
   ): Promise<IResponse<IOverviewStatistics>> {
-    return this.financeService.getOverviewStats(year);
+    return this.financeService.getOverviewStats(year, period);
   }
 
   @UsePipes(new ValidationPipe())
@@ -221,17 +302,19 @@ export class FinanceController {
   async getBeneficiaryOverviewStats(
     @Param('id') id: string,
     @Query('year') year: number,
+    @Query('period') period: string,
   ): Promise<IResponse<IBeneficiaryOverviewStatistics>> {
-    return this.financeService.getBeneficiaryOverviewStats(id, year);
+    return this.financeService.getBeneficiaryOverviewStats(id, period, year);
   }
 
   @UsePipes(new ValidationPipe())
   @Roles(['super admin', 'admin'])
   @Get('report')
   async getFinancialReport(
-    @Query('budget') budget: string,
-  ): Promise<IResponse<FinanceReportInterface[]>> {
-    return this.financeService.getFinancialReport(budget);
+    @Query('period') period: string,
+    @Query('year') year: number,
+  ): Promise<IResponse<FinanceReportInterface>> {
+    return this.financeService.getFinanceReport(period, year);
   }
 
   @UsePipes(new ValidationPipe())

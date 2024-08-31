@@ -5,6 +5,9 @@ export class AddStudentDto {
   @IsNotEmpty()
   name: string;
 
+  @IsOptional()
+  email?: string;
+
   @IsNotEmpty()
   parent: string;
 

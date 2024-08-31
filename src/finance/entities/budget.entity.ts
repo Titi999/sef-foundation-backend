@@ -10,11 +10,12 @@ import {
 import { BudgetDistribution } from './budgetDistribution.entity';
 import { statuses } from '../../users/user.interface';
 import { v4 as uuidv4 } from 'uuid';
+import { OtherBudgetDistribution } from './other-budget-distribution.entity';
 
 @Entity({ name: 'budgets' })
 export class Budget {
   constructor() {
-    this.id = uuidv4(); // You'll need to keep the uuid import for this
+    this.id = uuidv4();
   }
 
   @PrimaryColumn('uuid')
@@ -24,29 +25,22 @@ export class Budget {
   total: number;
 
   @Column()
-  utilized: number;
+  year: number;
 
   @Column()
-  surplus: number;
-
-  @Column()
-  startDate: Date;
-
-  @Column()
-  endDate: Date;
+  period: string;
 
   @OneToMany(
     () => BudgetDistribution,
     (budgetDistribution) => budgetDistribution.budget,
-    {
-      eager: true,
-    },
   )
-  @JoinColumn()
   budgetDistribution: BudgetDistribution[];
 
-  @Column()
-  totalDistribution: number;
+  @OneToMany(
+    () => OtherBudgetDistribution,
+    (otherBudgetDistribution) => otherBudgetDistribution.budget,
+  )
+  otherBudgetDistribution: OtherBudgetDistribution[];
 
   @Column({ enum: [statuses], default: statuses[0] })
   status: string;

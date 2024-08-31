@@ -7,12 +7,13 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Budget } from './budget.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { Student } from '../../students/student.entity';
+import { Budget } from './budget.entity';
+import { requestStatuses } from '../../users/user.interface';
 
-@Entity({ name: 'budgetDistributions' })
-export class BudgetDistribution {
+@Entity({ name: 'requests' })
+export class Request {
   constructor() {
     this.id = uuidv4();
   }
@@ -69,6 +70,9 @@ export class BudgetDistribution {
 
   @Column()
   provision: number;
+
+  @Column({ default: requestStatuses[0], enum: requestStatuses })
+  status: string;
 
   @CreateDateColumn({
     type: 'timestamp',

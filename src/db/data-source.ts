@@ -7,10 +7,12 @@ import { Authentication } from '../authentication/entities/authentication.entity
 import { Student } from '../students/student.entity';
 import { Budget } from '../finance/entities/budget.entity';
 import { BudgetDistribution } from '../finance/entities/budgetDistribution.entity';
-import { DisbursementDistribution } from '../finance/entities/disbursementDistribution.entity';
+import { Request } from '../finance/entities/request.entity';
 import { Disbursement } from '../finance/entities/disbursement.entity';
 import { School } from '../schools/school.entity';
 import { Academic } from '../academics/academics.entity';
+import { OtherBudgetDistribution } from '../finance/entities/other-budget-distribution.entity';
+import { Fund } from '../finance/entities/fund.entity';
 
 config();
 
@@ -30,10 +32,12 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
     Student,
     Budget,
     BudgetDistribution,
-    DisbursementDistribution,
+    Request,
     Disbursement,
     School,
     Academic,
+    OtherBudgetDistribution,
+    Fund,
   ],
   synchronize: true,
   seeds: ['dist/db/seeds/**/*{.ts,.js}'],

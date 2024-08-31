@@ -13,7 +13,12 @@ import { IPagination, IResponse } from '../shared/response.interface';
 import { generateRandomToken } from '../utility/tokenGenerator';
 import * as process from 'process';
 import { NotificationService } from '../shared/notification/notification.service';
-import { statuses, statusesTypes, userTypes } from './user.interface';
+import {
+  statuses,
+  statusesTypes,
+  userRoles,
+  userTypes,
+} from './user.interface';
 import { ChangeNameDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -59,6 +64,12 @@ export class UsersService {
     user.password = hashedPassword;
     user.role = userInfo.role;
     user.email = userInfo.email;
+  }
+
+  async getSuperAdmins() {
+    return await this.userRepository.findBy({
+      role: userRoles[0],
+    });
   }
 
   async findUserIncludingPasswordByEmail(email: string): Promise<User> {

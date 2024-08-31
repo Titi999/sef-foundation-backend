@@ -2,22 +2,22 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Disbursement } from './disbursement.entity';
 import { v4 as uuidv4 } from 'uuid';
 
-@Entity({ name: 'disbursementDistributions' })
-export class DisbursementDistribution {
+@Entity({ name: 'funds' })
+export class Fund {
   constructor() {
-    this.id = uuidv4(); // You'll need to keep the uuid import for this
+    this.id = uuidv4();
   }
 
   @PrimaryColumn('uuid')
   id: string;
+
+  @Column()
+  period: string;
 
   @Column()
   title: string;
@@ -25,11 +25,10 @@ export class DisbursementDistribution {
   @Column()
   amount: number;
 
-  @ManyToOne(() => Disbursement, { lazy: true, nullable: true })
-  @JoinColumn({ name: 'disbursementId' })
-  disbursement: Disbursement;
+  @Column()
+  year: number;
 
-  @Column({ nullable: true })
+  @Column()
   comments: string;
 
   @CreateDateColumn({
