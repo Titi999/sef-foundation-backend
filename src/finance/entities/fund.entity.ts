@@ -28,7 +28,7 @@ export class Fund {
   @Column()
   year: number;
 
-  @Column()
+  @Column({ nullable: true })
   comments: string;
 
   @CreateDateColumn({

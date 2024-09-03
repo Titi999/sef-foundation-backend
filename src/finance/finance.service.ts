@@ -63,7 +63,7 @@ export class FinanceService {
         budget.total += distributionTotal;
 
         const student = students.find(
-          (s) => s.code === createBudgetDistribution.studentCode,
+          (s) => String(s.code) === createBudgetDistribution.studentCode,
         );
         if (!student) {
           throw new NotFoundException(
@@ -236,7 +236,7 @@ export class FinanceService {
       excursion: 'Excursion',
       transportation: 'Transportation',
       wears: 'Wears',
-      schoolFeeding: 'School Feeding',
+      schoolfeeding: 'School Feeding',
       stationery: 'Stationery',
       provision: 'Provision',
     };

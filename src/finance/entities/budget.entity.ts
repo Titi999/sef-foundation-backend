@@ -34,12 +34,14 @@ export class Budget {
     () => BudgetDistribution,
     (budgetDistribution) => budgetDistribution.budget,
   )
+  @JoinColumn()
   budgetDistribution: BudgetDistribution[];
 
   @OneToMany(
     () => OtherBudgetDistribution,
     (otherBudgetDistribution) => otherBudgetDistribution.budget,
   )
+  @JoinColumn()
   otherBudgetDistribution: OtherBudgetDistribution[];
 
   @Column({ enum: [statuses], default: statuses[0] })

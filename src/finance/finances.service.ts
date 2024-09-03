@@ -420,12 +420,22 @@ export class FinancesService {
   }
 
   async approveRequest(id: string) {
-    const request = await this.requestRepository.findOneByOrFail({ id });
+    const request = await this.requestRepository.findOne({
+      where: { id },
+      relations: ['budget', 'student'],
+    });
     request.status = requestStatuses[1];
+
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
 
     const newDistribution = this.budgetDistributionRepository.create({
       ...request,
+      budget: await request.budget,
+      student: await request.student,
     });
+
     const user = await this.studentsService.findUser(await request.student.id);
     await this.budgetDistributionRepository.save(newDistribution);
     await this.requestRepository.save(request);

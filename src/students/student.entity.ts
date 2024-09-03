@@ -27,12 +27,11 @@ export class Student {
   id: string;
 
   @Column({
-    type: 'varchar',
-    length: 6,
+    type: 'integer',
     unique: true,
   })
   @Generated('increment')
-  code: string;
+  code: number;
 
   @OneToOne(() => User, {
     nullable: true,
